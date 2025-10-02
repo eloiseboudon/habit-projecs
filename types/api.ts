@@ -3,6 +3,16 @@ export type UserSummary = {
   display_name: string;
 };
 
+export type AuthResponse = {
+  user: UserSummary;
+};
+
+export type RegisterRequest = {
+  display_name: string;
+  email: string;
+  password: string;
+};
+
 export type DashboardDomainStat = {
   domain_id: number;
   domain_key: string;

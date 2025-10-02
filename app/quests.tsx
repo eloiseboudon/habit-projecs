@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,11 +14,15 @@ import {
 import { Feather } from "@expo/vector-icons";
 
 import BottomNav from "../components/BottomNav";
+import { useAuth } from "../context/AuthContext";
 import { useHabitData } from "../context/HabitDataContext";
 import { CATEGORIES, type CategoryKey } from "../constants/categories";
 
 export default function QuestsScreen() {
   const router = useRouter();
+  const {
+    state: authState,
+  } = useAuth();
   const {
     state: { status, tasks, errorMessage },
     refresh,
@@ -26,6 +30,12 @@ export default function QuestsScreen() {
     completeTask,
   } = useHabitData();
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (authState.status !== "authenticated") {
+      router.replace("/login");
+    }
+  }, [authState.status, router]);
 
   const questItems = useMemo(() => tasks?.tasks ?? [], [tasks]);
   const isInitialLoading =

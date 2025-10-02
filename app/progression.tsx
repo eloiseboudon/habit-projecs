@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -13,6 +13,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 
 import BottomNav from "../components/BottomNav";
+import { useAuth } from "../context/AuthContext";
 import { useHabitData } from "../context/HabitDataContext";
 import { CATEGORIES, type CategoryKey } from "../constants/categories";
 
@@ -41,10 +42,19 @@ function formatHistoryDate(isoDate: string): string {
 export default function ProgressionScreen() {
   const router = useRouter();
   const {
+    state: authState,
+  } = useAuth();
+  const {
     state: { status, progression, errorMessage },
     refresh,
     isRefreshing,
   } = useHabitData();
+
+  useEffect(() => {
+    if (authState.status !== "authenticated") {
+      router.replace("/login");
+    }
+  }, [authState.status, router]);
 
   const historyItems = useMemo(() => progression?.recent_history ?? [], [progression]);
   const weeklyStats = useMemo(() => progression?.weekly_stats ?? [], [progression]);

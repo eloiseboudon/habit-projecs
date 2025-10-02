@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from .models import ChallengeStatus, SnapshotPeriod, SourceType
 
@@ -127,6 +127,24 @@ class UserChallengeRead(BaseModel):
 class UserSummary(BaseModel):
     id: UUID
     display_name: str
+
+    class Config:
+        model_config = ConfigDict(from_attributes=True)
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1)
+
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=6)
+    display_name: str = Field(min_length=1)
+
+
+class AuthResponse(BaseModel):
+    user: UserSummary
 
     class Config:
         model_config = ConfigDict(from_attributes=True)

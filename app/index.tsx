@@ -10,8 +10,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useEffect } from "react";
 
 import BottomNav from "../components/BottomNav";
+import { useAuth } from "../context/AuthContext";
 import { useHabitData } from "../context/HabitDataContext";
 
 const DOMAIN_COLORS: Record<string, string> = {
@@ -25,10 +27,20 @@ const DOMAIN_COLORS: Record<string, string> = {
 export default function Index() {
   const router = useRouter();
   const {
+    state: authState,
+    logout,
+  } = useAuth();
+  const {
     state: { status, dashboard, errorMessage },
     refresh,
     isRefreshing,
   } = useHabitData();
+
+  useEffect(() => {
+    if (authState.status !== "authenticated") {
+      router.replace("/login");
+    }
+  }, [authState.status, router]);
 
   const renderContent = () => {
     if ((status === "loading" || status === "idle") && !dashboard) {
@@ -134,6 +146,19 @@ export default function Index() {
             <RefreshControl refreshing={isRefreshing} onRefresh={() => refresh()} tintColor="#58a6ff" />
           }
         >
+          <View style={styles.topBar}>
+            <Text style={styles.screenHeading}>Tableau de bord</Text>
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={() => {
+                logout();
+                router.replace("/login");
+              }}
+            >
+              <Feather name="log-out" size={18} color="#f8fafc" />
+              <Text style={styles.logoutLabel}>Déconnexion</Text>
+            </TouchableOpacity>
+          </View>
           {renderContent()}
         </ScrollView>
         <BottomNav />
@@ -156,6 +181,32 @@ const styles = StyleSheet.create({
     paddingTop: 32,
     paddingBottom: 120,
     gap: 32,
+  },
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  screenHeading: {
+    color: "#f8fafc",
+    fontSize: 22,
+    fontWeight: "700",
+  },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#30363d",
+    backgroundColor: "#161b2233",
+  },
+  logoutLabel: {
+    color: "#f8fafc",
+    fontSize: 14,
+    fontWeight: "600",
   },
   avatarContainer: {
     flexDirection: "row",

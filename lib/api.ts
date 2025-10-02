@@ -1,6 +1,8 @@
 import type {
+  AuthResponse,
   DashboardResponse,
   ProgressionResponse,
+  RegisterRequest,
   TaskListResponse,
   UserSummary,
 } from "../types/api";
@@ -108,6 +110,24 @@ export async function fetchUsers(): Promise<UserSummary[]> {
     headers: buildJsonHeaders(),
   });
   return handleResponse<UserSummary[]>(response);
+}
+
+export async function loginUser(email: string, password: string): Promise<AuthResponse> {
+  const response = await fetch(`${API_URL}/auth/login`, {
+    method: "POST",
+    headers: buildJsonHeaders(true),
+    body: JSON.stringify({ email, password }),
+  });
+  return handleResponse<AuthResponse>(response);
+}
+
+export async function registerUser(payload: RegisterRequest): Promise<AuthResponse> {
+  const response = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: buildJsonHeaders(true),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<AuthResponse>(response);
 }
 
 export async function fetchDashboard(userId: string): Promise<DashboardResponse> {

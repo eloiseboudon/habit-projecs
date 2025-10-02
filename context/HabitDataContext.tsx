@@ -1,18 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import {
-  completeTaskLog,
-  fetchDashboard,
-  fetchProgression,
-  fetchTasks,
-  fetchUsers,
-} from "../lib/api";
-import type {
-  DashboardResponse,
-  ProgressionResponse,
-  TaskListResponse,
-  UserSummary,
-} from "../types/api";
+import { useAuth } from "./AuthContext";
+import { completeTaskLog, fetchDashboard, fetchProgression, fetchTasks } from "../lib/api";
+import type { DashboardResponse, ProgressionResponse, TaskListResponse, UserSummary } from "../types/api";
 
 type HabitDataState = {
   status: "idle" | "loading" | "ready" | "error";
@@ -33,6 +23,9 @@ type HabitDataContextValue = {
 const HabitDataContext = createContext<HabitDataContextValue | undefined>(undefined);
 
 export function HabitDataProvider({ children }: { children: React.ReactNode }) {
+  const {
+    state: { status: authStatus, user: authUser },
+  } = useAuth();
   const [state, setState] = useState<HabitDataState>({
     status: "idle",
     user: null,
@@ -43,24 +36,36 @@ export function HabitDataProvider({ children }: { children: React.ReactNode }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
-    setState((previous) => ({ ...previous, status: "loading", errorMessage: undefined }));
-    try {
-      const users = await fetchUsers();
-      if (!users.length) {
-        throw new Error("Aucun utilisateur disponible dans la base de données.");
-      }
+    if (!authUser) {
+      setState({
+        status: "idle",
+        user: null,
+        dashboard: null,
+        tasks: null,
+        progression: null,
+        errorMessage: undefined,
+      });
+      return;
+    }
 
-      const user = users[0];
+    setState((previous) => ({
+      ...previous,
+      status: "loading",
+      errorMessage: undefined,
+      user: authUser,
+    }));
+
+    try {
       const [dashboard, tasks, progression] = await Promise.all([
-        fetchDashboard(user.id),
-        fetchTasks(user.id),
-        fetchProgression(user.id),
+        fetchDashboard(authUser.id),
+        fetchTasks(authUser.id),
+        fetchProgression(authUser.id),
       ]);
 
       setState({
         status: "ready",
         errorMessage: undefined,
-        user,
+        user: authUser,
         dashboard,
         tasks,
         progression,
@@ -72,19 +77,34 @@ export function HabitDataProvider({ children }: { children: React.ReactNode }) {
         ...previous,
         status: "error",
         errorMessage: message,
+        user: authUser,
       }));
     }
-  }, []);
+  }, [authUser]);
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    if (authStatus === "authenticated" && authUser) {
+      void loadData();
+    } else {
+      setState({
+        status: "idle",
+        user: null,
+        dashboard: null,
+        tasks: null,
+        progression: null,
+        errorMessage: undefined,
+      });
+    }
+  }, [authStatus, authUser, loadData]);
 
   const refresh = useCallback(async () => {
+    if (!authUser) {
+      return;
+    }
     setIsRefreshing(true);
     await loadData();
     setIsRefreshing(false);
-  }, [loadData]);
+  }, [authUser, loadData]);
 
   const completeTask = useCallback(
     async (taskId: string) => {

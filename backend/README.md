@@ -5,10 +5,12 @@ Cette application backend fournit une API FastAPI connectée à une base Postgre
 ## Installation
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r backend/requirements.txt
+cd backend
+make install
+source .venv/bin/activate  # optionnel : uniquement si vous souhaitez utiliser directement les binaires
 ```
+
+La cible `make install` crée automatiquement un virtualenv local dans `backend/.venv` et installe les dépendances Python.
 
 Créez un fichier `.env` à la racine du dossier `backend/` en vous basant sur `.env.example`.
 
@@ -18,7 +20,7 @@ Créez un fichier `.env` à la racine du dossier `backend/` en vous basant sur `
 make -C backend run
 ```
 
-L'API sera accessible sur http://127.0.0.1:8000.
+Toutes les commandes du Makefile utilisent automatiquement l'environnement virtuel `.venv`. L'API sera accessible sur http://127.0.0.1:8000.
 
 ## Migrations de base de données
 
@@ -52,5 +54,6 @@ Les cibles principales sont :
 - `make migrate` : applique les migrations Alembic.
 - `make revision msg="Message"` : génère une nouvelle migration.
 - `make check` : compile les modules pour vérifier qu'ils ne contiennent pas d'erreurs de syntaxe.
+- `make ensure-venv` : crée l'environnement virtuel local si nécessaire.
 
 Assurez-vous que la variable d'environnement `DATABASE_URL` est définie (via votre fichier `.env`) avant d'exécuter les commandes ci-dessus.

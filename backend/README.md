@@ -19,3 +19,21 @@ uvicorn app.main:app --reload
 ```
 
 L'API sera accessible sur http://127.0.0.1:8000.
+
+## Migrations de base de données
+
+Les migrations Alembic sont configurées via le fichier `backend/alembic.ini`.
+
+### Appliquer les migrations
+
+```bash
+alembic -c backend/alembic.ini upgrade head
+```
+
+### Créer une nouvelle migration
+
+```bash
+alembic -c backend/alembic.ini revision --autogenerate -m "Votre message"
+```
+
+Assurez-vous que la variable d'environnement `DATABASE_URL` est définie (via votre fichier `.env`) avant d'exécuter les commandes ci-dessus.

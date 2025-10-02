@@ -93,14 +93,34 @@ export default function QuestsScreen() {
         <FlatList
           contentContainerStyle={styles.content}
           ListHeaderComponent={
-            <>
-              <View style={styles.header}>
-                <Pressable onPress={() => router.push("/")}>
-                  <Text style={styles.backLink}>← Accueil</Text>
-                </Pressable>
-                <Text style={styles.title}>Mes Quêtes</Text>
+            <View style={styles.header}>
+              <Pressable onPress={() => router.push("/")}>
+                <Text style={styles.backLink}>← Accueil</Text>
+              </Pressable>
+              <Text style={styles.title}>Mes Quêtes</Text>
+            </View>
+          }
+          data={tasks}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <Pressable
+              style={[styles.taskCard, item.completed && styles.taskCardCompleted]}
+              onPress={() => toggleTask(item.id)}
+            >
+              <View style={styles.checkbox}>
+                <View style={[styles.checkboxInner, item.completed && styles.checkboxChecked]} />
               </View>
-
+              <View style={styles.taskContent}>
+                <Text style={styles.taskTitle}>{item.title}</Text>
+                <Text style={styles.taskMeta}>
+                  {item.category} · {item.xp} XP
+                </Text>
+              </View>
+              <Text style={styles.taskAction}>{item.completed ? "Validée" : "Valider"}</Text>
+            </Pressable>
+          )}
+          ListFooterComponent={
+            <View style={styles.footerContent}>
               <View style={styles.formCard}>
                 <Text style={styles.sectionTitle}>Ajouter une tâche</Text>
                 <Text style={styles.sectionDescription}>
@@ -163,32 +183,12 @@ export default function QuestsScreen() {
                   </Pressable>
                 </View>
               </View>
-            </>
-          }
-          data={tasks}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <Pressable
-              style={[styles.taskCard, item.completed && styles.taskCardCompleted]}
-              onPress={() => toggleTask(item.id)}
-            >
-              <View style={styles.checkbox}>
-                <View style={[styles.checkboxInner, item.completed && styles.checkboxChecked]} />
-              </View>
-              <View style={styles.taskContent}>
-                <Text style={styles.taskTitle}>{item.title}</Text>
-                <Text style={styles.taskMeta}>
-                  {item.category} · {item.xp} XP
+
+              <View style={styles.footerSummary}>
+                <Text style={styles.footerText}>
+                  XP validée aujourd’hui : <Text style={styles.footerHighlight}>{totalXp} XP</Text>
                 </Text>
               </View>
-              <Text style={styles.taskAction}>{item.completed ? "Validée" : "Valider"}</Text>
-            </Pressable>
-          )}
-          ListFooterComponent={
-            <View style={styles.footerSummary}>
-              <Text style={styles.footerText}>
-                XP validée aujourd’hui : <Text style={styles.footerHighlight}>{totalXp} XP</Text>
-              </Text>
             </View>
           }
         />
@@ -387,6 +387,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#30363d",
     backgroundColor: "#161b22",
+  },
+  footerContent: {
+    gap: 20,
   },
   footerText: {
     color: "#8b949e",

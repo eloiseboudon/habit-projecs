@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from .models import ChallengeStatus, SnapshotPeriod, SourceType
 
@@ -18,7 +18,7 @@ class DomainBase(BaseModel):
     order_index: int
 
     class Config:
-        orm_mode = True
+        model_config = ConfigDict(from_attributes=True)
 
 
 class TaskLogCreate(BaseModel):
@@ -46,7 +46,7 @@ class TaskLogRead(BaseModel):
     source: str
 
     class Config:
-        orm_mode = True
+        model_config = ConfigDict(from_attributes=True)
 
 
 class XPEventRead(BaseModel):
@@ -59,7 +59,7 @@ class XPEventRead(BaseModel):
     occurred_at: datetime
 
     class Config:
-        orm_mode = True
+        model_config = ConfigDict(from_attributes=True)
 
 
 class UserLevelRead(BaseModel):
@@ -70,7 +70,7 @@ class UserLevelRead(BaseModel):
     last_update_at: datetime
 
     class Config:
-        orm_mode = True
+        model_config = ConfigDict(from_attributes=True)
 
 
 class ProgressSnapshotRead(BaseModel):
@@ -84,7 +84,7 @@ class ProgressSnapshotRead(BaseModel):
     computed_at: datetime
 
     class Config:
-        orm_mode = True
+        model_config = ConfigDict(from_attributes=True)
 
 
 class StreakRead(BaseModel):
@@ -96,7 +96,7 @@ class StreakRead(BaseModel):
     last_activity_date: Optional[date]
 
     class Config:
-        orm_mode = True
+        model_config = ConfigDict(from_attributes=True)
 
 
 class ChallengeRead(BaseModel):
@@ -110,7 +110,7 @@ class ChallengeRead(BaseModel):
     is_active: bool
 
     class Config:
-        orm_mode = True
+        model_config = ConfigDict(from_attributes=True)
 
 
 class UserChallengeRead(BaseModel):
@@ -121,4 +121,4 @@ class UserChallengeRead(BaseModel):
     status: ChallengeStatus
 
     class Config:
-        orm_mode = True
+        model_config = ConfigDict(from_attributes=True)

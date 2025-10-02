@@ -62,7 +62,7 @@ def register_user(
     session.commit()
     session.refresh(user)
 
-    return AuthResponse(user=UserSummary.model_validate(user))
+    return AuthResponse(user=UserSummary.model_validate(user, from_attributes=True))
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -78,4 +78,4 @@ def login_user(
             detail="Identifiants de connexion invalides.",
         )
 
-    return AuthResponse(user=UserSummary.model_validate(user))
+    return AuthResponse(user=UserSummary.model_validate(user, from_attributes=True))

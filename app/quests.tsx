@@ -104,8 +104,8 @@ export default function QuestsScreen() {
               <View style={styles.formCard}>
                 <Text style={styles.sectionTitle}>Ajouter une tâche</Text>
                 <Text style={styles.sectionDescription}>
-                  Choisis une catégorie, écris ta mission et gagne de l&apos;XP en un
-                  clin d&apos;œil.
+                  Choisis une catégorie, écris ta mission et gagne de l’XP en un
+                  clin d’œil.
                 </Text>
 
                 <View style={styles.categoryRow}>
@@ -187,7 +187,7 @@ export default function QuestsScreen() {
           ListFooterComponent={
             <View style={styles.footerSummary}>
               <Text style={styles.footerText}>
-                XP validée aujourd&apos;hui : <Text style={styles.footerHighlight}>{totalXp} XP</Text>
+                XP validée aujourd’hui : <Text style={styles.footerHighlight}>{totalXp} XP</Text>
               </Text>
             </View>
           }

@@ -10,7 +10,7 @@ import BottomNav from "../components/BottomNav";
 const HISTORY = [
   {
     id: "h1",
-    date: "Aujourd&apos;hui",
+    date: "Aujourd’hui",
     items: [
       { label: "Hydratation du matin", xp: 15 },
       { label: "Méditation express", xp: 20 },

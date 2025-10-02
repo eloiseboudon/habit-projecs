@@ -58,10 +58,10 @@ export default function QuestsScreen() {
     const normalizeText = (value: string | null | undefined) =>
       value
         ? value
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase()
-            .trim()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .trim()
         : "";
 
     const candidates: { key: string; name: string }[] = [];

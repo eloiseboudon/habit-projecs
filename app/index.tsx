@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import BottomNav from "../components/BottomNav";
 
 const STAT_BARS = [
   { label: "Santé", value: 0.8 },
@@ -22,60 +23,65 @@ export default function Index() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarInitials}>JD</Text>
-          </View>
-          <View>
-            <Text style={styles.levelLabel}>Niveau 12</Text>
-            <Text style={styles.xpText}>340 XP / 500 XP</Text>
-          </View>
-        </View>
-
-        <View style={styles.statsContainer}>
-          <Text style={styles.sectionTitle}>Statistiques</Text>
-          {STAT_BARS.map((stat) => (
-            <View key={stat.label} style={styles.statRow}>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-              <View style={styles.progressBarBackground}>
-                <View
-                  style={[
-                    styles.progressBarFill,
-                    { width: `${Math.min(stat.value * 100, 100)}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.statValue}>{Math.round(stat.value * 100)}%</Text>
+      <View style={styles.screen}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarInitials}>JD</Text>
             </View>
-          ))}
-        </View>
+            <View>
+              <Text style={styles.levelLabel}>Niveau 12</Text>
+              <Text style={styles.xpText}>340 XP / 500 XP</Text>
+            </View>
+          </View>
 
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.ctaButton, styles.primaryButton]}
-            onPress={() => router.push("/quests")}
-          >
-            <Text style={styles.ctaLabel}>Quêtes / Tâches</Text>
-            <Text style={styles.ctaDescription}>
-              Consulte tes priorités et ajoute de nouvelles missions quotidiennes.
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.statsContainer}>
+            <Text style={styles.sectionTitle}>Statistiques</Text>
+            {STAT_BARS.map((stat) => (
+              <View key={stat.label} style={styles.statRow}>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+                <View style={styles.progressBarBackground}>
+                  <View
+                    style={[
+                      styles.progressBarFill,
+                      { width: `${Math.min(stat.value * 100, 100)}%` },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.statValue}>
+                  {Math.round(stat.value * 100)}%
+                </Text>
+              </View>
+            ))}
+          </View>
 
-          <TouchableOpacity
-            style={[styles.ctaButton, styles.secondaryButton]}
-            onPress={() => router.push("/progression")}
-          >
-            <Text style={styles.ctaLabel}>Progression</Text>
-            <Text style={styles.ctaDescription}>
-              Analyse ton historique et célèbre les badges débloqués.
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={[styles.ctaButton, styles.primaryButton]}
+              onPress={() => router.push("/quests")}
+            >
+              <Text style={styles.ctaLabel}>Quêtes / Tâches</Text>
+              <Text style={styles.ctaDescription}>
+                Consulte tes priorités et ajoute de nouvelles missions quotidiennes.
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.ctaButton, styles.secondaryButton]}
+              onPress={() => router.push("/progression")}
+            >
+              <Text style={styles.ctaLabel}>Progression</Text>
+              <Text style={styles.ctaDescription}>
+                Analyse ton historique et célèbre les badges débloqués.
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+        <BottomNav />
+      </View>
     </SafeAreaView>
   );
 }
@@ -85,10 +91,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0d1117",
   },
+  screen: {
+    flex: 1,
+    backgroundColor: "#0d1117",
+  },
   container: {
     paddingHorizontal: 20,
     paddingTop: 32,
-    paddingBottom: 48,
+    paddingBottom: 120,
     gap: 32,
   },
   avatarContainer: {

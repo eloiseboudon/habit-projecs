@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import {
   FlatList,
   SafeAreaView,
@@ -6,6 +5,7 @@ import {
   Text,
   View,
 } from "react-native";
+import BottomNav from "../components/BottomNav";
 
 const HISTORY = [
   {
@@ -34,97 +34,95 @@ const BADGES = [
 ];
 
 export default function ProgressionScreen() {
-  const router = useRouter();
-
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Progression</Text>
-        <Text style={styles.subtitle}>
-          Suis ton évolution et découvre les récompenses débloquées.
-        </Text>
-      </View>
-
-      <FlatList
-        contentContainerStyle={styles.content}
-        ListHeaderComponent={
-          <>
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Historique des actions</Text>
-              {HISTORY.map((day) => (
-                <View key={day.id} style={styles.historySection}>
-                  <Text style={styles.historyDate}>{day.date}</Text>
-                  {day.items.map((item, index) => (
-                    <View key={index} style={styles.historyItem}>
-                      <Text style={styles.historyLabel}>{item.label}</Text>
-                      <Text style={styles.historyXp}>+{item.xp} XP</Text>
-                    </View>
-                  ))}
-                </View>
-              ))}
-            </View>
-
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Stats hebdo / mensuelles</Text>
-              <View style={styles.statRow}>
-                <View style={styles.statBlock}>
-                  <Text style={styles.statValue}>12</Text>
-                  <Text style={styles.statLabel}>Tâches validées</Text>
-                  <Text style={styles.statDelta}>+4 vs semaine passée</Text>
-                </View>
-                <View style={styles.statBlock}>
-                  <Text style={styles.statValue}>420 XP</Text>
-                  <Text style={styles.statLabel}>Cette semaine</Text>
-                  <Text style={styles.statDeltaPositive}>+12%</Text>
-                </View>
+      <View style={styles.screen}>
+        <FlatList
+          contentContainerStyle={styles.content}
+          ListHeaderComponent={
+            <>
+              <View style={styles.header}>
+                <Text style={styles.title}>Progression</Text>
+                <Text style={styles.subtitle}>
+                  Suis ton évolution et découvre les récompenses débloquées.
+                </Text>
               </View>
-              <View style={styles.statRow}>
-                <View style={styles.statBlock}>
-                  <Text style={styles.statValue}>38</Text>
-                  <Text style={styles.statLabel}>Actions ce mois</Text>
-                  <Text style={styles.statDelta}>Objectif 45</Text>
-                </View>
-                <View style={styles.statBlock}>
-                  <Text style={styles.statValue}>3</Text>
-                  <Text style={styles.statLabel}>Jours à 100%</Text>
-                  <Text style={styles.statDelta}>Encore 2 pour un badge</Text>
-                </View>
-              </View>
-            </View>
 
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Badges débloqués</Text>
-              <View style={styles.badgeGrid}>
-                {BADGES.map((badge) => (
-                  <View key={badge.id} style={styles.badge}>
-                    <View style={styles.badgeIcon}>
-                      <Text style={styles.badgeIconText}>🏅</Text>
-                    </View>
-                    <Text style={styles.badgeTitle}>{badge.title}</Text>
-                    <Text style={styles.badgeDescription}>{badge.description}</Text>
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Historique des actions</Text>
+                {HISTORY.map((day) => (
+                  <View key={day.id} style={styles.historySection}>
+                    <Text style={styles.historyDate}>{day.date}</Text>
+                    {day.items.map((item, index) => (
+                      <View key={index} style={styles.historyItem}>
+                        <Text style={styles.historyLabel}>{item.label}</Text>
+                        <Text style={styles.historyXp}>+{item.xp} XP</Text>
+                      </View>
+                    ))}
                   </View>
                 ))}
               </View>
-            </View>
-          </>
-        }
-        data={[]}
-        keyExtractor={(_, index) => index.toString()}
-        renderItem={() => null}
-        ListFooterComponent={
-          <View style={styles.footer}>
-            <Text style={styles.footerText} onPress={() => router.push("/")}>
-              ← Retour à l&apos;accueil
-            </Text>
-          </View>
-        }
-      />
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Stats hebdo / mensuelles</Text>
+                <View style={styles.statRow}>
+                  <View style={styles.statBlock}>
+                    <Text style={styles.statValue}>12</Text>
+                    <Text style={styles.statLabel}>Tâches validées</Text>
+                    <Text style={styles.statDelta}>+4 vs semaine passée</Text>
+                  </View>
+                  <View style={styles.statBlock}>
+                    <Text style={styles.statValue}>420 XP</Text>
+                    <Text style={styles.statLabel}>Cette semaine</Text>
+                    <Text style={styles.statDeltaPositive}>+12%</Text>
+                  </View>
+                </View>
+                <View style={styles.statRow}>
+                  <View style={styles.statBlock}>
+                    <Text style={styles.statValue}>38</Text>
+                    <Text style={styles.statLabel}>Actions ce mois</Text>
+                    <Text style={styles.statDelta}>Objectif 45</Text>
+                  </View>
+                  <View style={styles.statBlock}>
+                    <Text style={styles.statValue}>3</Text>
+                    <Text style={styles.statLabel}>Jours à 100%</Text>
+                    <Text style={styles.statDelta}>Encore 2 pour un badge</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Badges débloqués</Text>
+                <View style={styles.badgeGrid}>
+                  {BADGES.map((badge) => (
+                    <View key={badge.id} style={styles.badge}>
+                      <View style={styles.badgeIcon}>
+                        <Text style={styles.badgeIconText}>🏅</Text>
+                      </View>
+                      <Text style={styles.badgeTitle}>{badge.title}</Text>
+                      <Text style={styles.badgeDescription}>{badge.description}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </>
+          }
+          data={[]}
+          keyExtractor={(_, index) => index.toString()}
+          renderItem={() => null}
+        />
+        <BottomNav />
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
+    flex: 1,
+    backgroundColor: "#0d1117",
+  },
+  screen: {
     flex: 1,
     backgroundColor: "#0d1117",
   },
@@ -147,7 +145,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     gap: 20,
-    paddingBottom: 48,
+    paddingBottom: 120,
   },
   card: {
     backgroundColor: "#161b22",
@@ -261,13 +259,5 @@ const styles = StyleSheet.create({
     color: "#8b949e",
     fontSize: 12,
     textAlign: "center",
-  },
-  footer: {
-    marginTop: 12,
-    alignItems: "center",
-  },
-  footerText: {
-    color: "#58a6ff",
-    fontSize: 15,
   },
 });

@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { useMemo, useState } from "react";
+import BottomNav from "../components/BottomNav";
 
 type Task = {
   id: string;
@@ -88,112 +89,121 @@ export default function QuestsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.push("/")}>
-          <Text style={styles.backLink}>← Accueil</Text>
-        </Pressable>
-        <Text style={styles.title}>Quêtes & Tâches</Text>
-      </View>
-
-      <FlatList
-        contentContainerStyle={styles.content}
-        ListHeaderComponent={
-          <View style={styles.formCard}>
-            <Text style={styles.sectionTitle}>Ajouter une tâche</Text>
-            <Text style={styles.sectionDescription}>
-              Choisis une catégorie, écris ta mission et gagne de l&apos;XP en un
-              clin d&apos;œil.
-            </Text>
-
-            <View style={styles.categoryRow}>
-              {CATEGORIES.map((category) => (
-                <Pressable
-                  key={category}
-                  style={[
-                    styles.categoryChip,
-                    selectedCategory === category && styles.categoryChipActive,
-                  ]}
-                  onPress={() => setSelectedCategory(category)}
-                >
-                  <Text
-                    style={[
-                      styles.categoryLabel,
-                      selectedCategory === category && styles.categoryLabelActive,
-                    ]}
-                  >
-                    {category}
-                  </Text>
+      <View style={styles.screen}>
+        <FlatList
+          contentContainerStyle={styles.content}
+          ListHeaderComponent={
+            <>
+              <View style={styles.header}>
+                <Pressable onPress={() => router.push("/")}>
+                  <Text style={styles.backLink}>← Accueil</Text>
                 </Pressable>
-              ))}
-            </View>
-
-            <TextInput
-              value={taskTitle}
-              onChangeText={setTaskTitle}
-              placeholder="Saisie rapide..."
-              placeholderTextColor="#6e7681"
-              style={styles.input}
-            />
-
-            <View style={styles.xpRow}>
-              <Text style={styles.xpLabel}>Gain XP</Text>
-              <View style={styles.xpAdjusters}>
-                {[10, 20, 40].map((value) => (
-                  <Pressable
-                    key={value}
-                    style={[styles.xpButton, xp === value && styles.xpButtonActive]}
-                    onPress={() => setXp(value)}
-                  >
-                    <Text
-                      style={[
-                        styles.xpButtonLabel,
-                        xp === value && styles.xpButtonLabelActive,
-                      ]}
-                    >
-                      +{value}
-                    </Text>
-                  </Pressable>
-                ))}
+                <Text style={styles.title}>Quêtes & Tâches</Text>
               </View>
-              <Pressable style={styles.addTaskButton} onPress={addTask}>
-                <Text style={styles.addTaskLabel}>+ Ajouter</Text>
-              </Pressable>
-            </View>
-          </View>
-        }
-        data={tasks}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <Pressable
-            style={[styles.taskCard, item.completed && styles.taskCardCompleted]}
-            onPress={() => toggleTask(item.id)}
-          >
-            <View style={styles.checkbox}>
-              <View style={[styles.checkboxInner, item.completed && styles.checkboxChecked]} />
-            </View>
-            <View style={styles.taskContent}>
-              <Text style={styles.taskTitle}>{item.title}</Text>
-              <Text style={styles.taskMeta}>
-                {item.category} · {item.xp} XP
+
+              <View style={styles.formCard}>
+                <Text style={styles.sectionTitle}>Ajouter une tâche</Text>
+                <Text style={styles.sectionDescription}>
+                  Choisis une catégorie, écris ta mission et gagne de l&apos;XP en un
+                  clin d&apos;œil.
+                </Text>
+
+                <View style={styles.categoryRow}>
+                  {CATEGORIES.map((category) => (
+                    <Pressable
+                      key={category}
+                      style={[
+                        styles.categoryChip,
+                        selectedCategory === category && styles.categoryChipActive,
+                      ]}
+                      onPress={() => setSelectedCategory(category)}
+                    >
+                      <Text
+                        style={[
+                          styles.categoryLabel,
+                          selectedCategory === category && styles.categoryLabelActive,
+                        ]}
+                      >
+                        {category}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <TextInput
+                  value={taskTitle}
+                  onChangeText={setTaskTitle}
+                  placeholder="Saisie rapide..."
+                  placeholderTextColor="#6e7681"
+                  style={styles.input}
+                />
+
+                <View style={styles.xpRow}>
+                  <Text style={styles.xpLabel}>Gain XP</Text>
+                  <View style={styles.xpAdjusters}>
+                    {[10, 20, 40].map((value) => (
+                      <Pressable
+                        key={value}
+                        style={[styles.xpButton, xp === value && styles.xpButtonActive]}
+                        onPress={() => setXp(value)}
+                      >
+                        <Text
+                          style={[
+                            styles.xpButtonLabel,
+                            xp === value && styles.xpButtonLabelActive,
+                          ]}
+                        >
+                          +{value}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Pressable style={styles.addTaskButton} onPress={addTask}>
+                    <Text style={styles.addTaskLabel}>+ Ajouter</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </>
+          }
+          data={tasks}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <Pressable
+              style={[styles.taskCard, item.completed && styles.taskCardCompleted]}
+              onPress={() => toggleTask(item.id)}
+            >
+              <View style={styles.checkbox}>
+                <View style={[styles.checkboxInner, item.completed && styles.checkboxChecked]} />
+              </View>
+              <View style={styles.taskContent}>
+                <Text style={styles.taskTitle}>{item.title}</Text>
+                <Text style={styles.taskMeta}>
+                  {item.category} · {item.xp} XP
+                </Text>
+              </View>
+              <Text style={styles.taskAction}>{item.completed ? "Validée" : "Valider"}</Text>
+            </Pressable>
+          )}
+          ListFooterComponent={
+            <View style={styles.footerSummary}>
+              <Text style={styles.footerText}>
+                XP validée aujourd&apos;hui : <Text style={styles.footerHighlight}>{totalXp} XP</Text>
               </Text>
             </View>
-            <Text style={styles.taskAction}>{item.completed ? "Validée" : "Valider"}</Text>
-          </Pressable>
-        )}
-        ListFooterComponent={
-          <View style={styles.footerSummary}>
-            <Text style={styles.footerText}>
-              XP validée aujourd&apos;hui : <Text style={styles.footerHighlight}>{totalXp} XP</Text>
-            </Text>
-          </View>
-        }
-      />
+          }
+        />
+        <BottomNav />
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
+    flex: 1,
+    backgroundColor: "#0d1117",
+  },
+  screen: {
     flex: 1,
     backgroundColor: "#0d1117",
   },
@@ -218,6 +228,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     gap: 16,
+    paddingBottom: 120,
   },
   formCard: {
     backgroundColor: "#161b22",

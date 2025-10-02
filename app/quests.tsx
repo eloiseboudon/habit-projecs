@@ -9,12 +9,23 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import BottomNav from "../components/BottomNav";
+
+const CATEGORY_MAP = {
+  health: { label: "Santé", icon: "🩺" },
+  finance: { label: "Finances", icon: "💰" },
+  work: { label: "Travail", icon: "🧠" },
+  relations: { label: "Relations", icon: "🤝" },
+  wellness: { label: "Bien-être", icon: "🧘" },
+} as const;
+
+type CategoryKey = keyof typeof CATEGORY_MAP;
 
 type Task = {
   id: string;
   title: string;
-  category: string;
+  category: CategoryKey;
   xp: number;
   completed: boolean;
 };
@@ -23,33 +34,32 @@ const FAVORITE_TASKS: Task[] = [
   {
     id: "1",
     title: "Hydratation du matin",
-    category: "Santé",
+    category: "health",
     xp: 15,
     completed: false,
   },
   {
     id: "2",
     title: "Revue budget",
-    category: "Finances",
+    category: "finance",
     xp: 25,
     completed: false,
   },
   {
     id: "3",
     title: "Point équipe",
-    category: "Travail",
+    category: "work",
     xp: 30,
     completed: false,
   },
 ];
-
-const CATEGORIES = ["Santé", "Finances", "Travail", "Relations", "Bien-être"];
+const CATEGORY_OPTIONS = Object.keys(CATEGORY_MAP) as CategoryKey[];
 
 export default function QuestsScreen() {
   const router = useRouter();
   const [tasks, setTasks] = useState(FAVORITE_TASKS);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(
-    CATEGORIES[0]
+  const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(
+    CATEGORY_OPTIONS[0]
   );
   const [taskTitle, setTaskTitle] = useState("");
   const [xp, setXp] = useState(20);
@@ -107,16 +117,39 @@ export default function QuestsScreen() {
               style={[styles.taskCard, item.completed && styles.taskCardCompleted]}
               onPress={() => toggleTask(item.id)}
             >
-              <View style={styles.checkbox}>
-                <View style={[styles.checkboxInner, item.completed && styles.checkboxChecked]} />
-              </View>
+              <Pressable
+                onPress={(event) => {
+                  event.stopPropagation();
+                  toggleTask(item.id);
+                }}
+                hitSlop={10}
+                style={[
+                  styles.checkboxButton,
+                  item.completed
+                    ? styles.checkboxButtonCompleted
+                    : styles.checkboxButtonDefault,
+                ]}
+              >
+                {item.completed && (
+                  <Feather name="check" size={16} color="#0d1117" />
+                )}
+              </Pressable>
               <View style={styles.taskContent}>
-                <Text style={styles.taskTitle}>{item.title}</Text>
-                <Text style={styles.taskMeta}>
-                  {item.category} · {item.xp} XP
+                <Text
+                  style={[
+                    styles.taskTitle,
+                    item.completed && styles.taskTitleCompleted,
+                  ]}
+                >
+                  {item.title}
                 </Text>
+                <View style={styles.taskMetaRow}>
+                  <Text style={styles.taskCategory}>
+                    {CATEGORY_MAP[item.category].icon} {CATEGORY_MAP[item.category].label}
+                  </Text>
+                  <Text style={styles.taskXp}>+{item.xp} XP</Text>
+                </View>
               </View>
-              <Text style={styles.taskAction}>{item.completed ? "Validée" : "Valider"}</Text>
             </Pressable>
           )}
           ListFooterComponent={
@@ -129,7 +162,7 @@ export default function QuestsScreen() {
                 </Text>
 
                 <View style={styles.categoryRow}>
-                  {CATEGORIES.map((category) => (
+                  {CATEGORY_OPTIONS.map((category) => (
                     <Pressable
                       key={category}
                       style={[
@@ -144,7 +177,7 @@ export default function QuestsScreen() {
                           selectedCategory === category && styles.categoryLabelActive,
                         ]}
                       >
-                        {category}
+                        {CATEGORY_MAP[category].label}
                       </Text>
                     </Pressable>
                   ))}
@@ -330,37 +363,34 @@ const styles = StyleSheet.create({
   },
   taskCard: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    backgroundColor: "#161b22",
+    alignItems: "flex-start",
+    gap: 12,
+    backgroundColor: "rgba(22, 27, 34, 0.7)",
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#30363d",
+    borderColor: "rgba(48, 54, 61, 0.6)",
     marginBottom: 12,
   },
   taskCardCompleted: {
-    borderColor: "#2ea043",
-    backgroundColor: "#182c1f",
+    borderColor: "rgba(34, 197, 94, 0.6)",
+    backgroundColor: "rgba(20, 83, 45, 0.2)",
   },
-  checkbox: {
+  checkboxButton: {
     width: 28,
     height: 28,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: "#58a6ff",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0d1117",
   },
-  checkboxInner: {
-    width: 16,
-    height: 16,
-    borderRadius: 4,
-    backgroundColor: "transparent",
+  checkboxButtonDefault: {
+    backgroundColor: "rgba(13, 17, 23, 0.9)",
+    borderColor: "rgba(75, 85, 99, 0.6)",
   },
-  checkboxChecked: {
-    backgroundColor: "#58a6ff",
+  checkboxButtonCompleted: {
+    backgroundColor: "#22c55e",
+    borderColor: "#22c55e",
   },
   taskContent: {
     flex: 1,
@@ -371,14 +401,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  taskMeta: {
-    color: "#8b949e",
-    fontSize: 13,
+  taskTitleCompleted: {
+    textDecorationLine: "line-through",
+    color: "#6b7280",
   },
-  taskAction: {
-    color: "#58a6ff",
-    fontSize: 14,
-    fontWeight: "600",
+  taskMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  taskCategory: {
+    fontSize: 12,
+    color: "#9ca3af",
+  },
+  taskXp: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#a855f7",
   },
   footerSummary: {
     marginTop: 12,

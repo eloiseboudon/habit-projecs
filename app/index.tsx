@@ -41,10 +41,14 @@ export default function Index() {
           <View style={styles.statsContainer}>
             {STAT_BARS.map((stat) => (
               <View key={stat.label} style={styles.statRow}>
-                <Text style={styles.statLabel}>{stat.icon} {stat.label}</Text>
-                <Text style={styles.statValue}>
-                  {Math.round(stat.value * 100)}%
-                </Text>
+                <View style={styles.statHeader}>
+                  <Text style={styles.statLabel}>
+                    {stat.icon} {stat.label}
+                  </Text>
+                  <Text style={styles.statValue}>
+                    {Math.round(stat.value * 100)}%
+                  </Text>
+                </View>
                 <View style={styles.progressBarBackground}>
                   <View
                     style={[
@@ -152,6 +156,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#30363d",
     gap: 10,
+  },
+  statHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   statLabel: {
     color: "#c9d1d9",

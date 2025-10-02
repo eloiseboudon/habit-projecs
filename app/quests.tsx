@@ -11,16 +11,11 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import BottomNav from "../components/BottomNav";
-
-const CATEGORY_MAP = {
-  health: { label: "Santé", icon: "🩺" },
-  finance: { label: "Finances", icon: "💰" },
-  work: { label: "Travail", icon: "🧠" },
-  relations: { label: "Relations", icon: "🤝" },
-  wellness: { label: "Bien-être", icon: "🧘" },
-} as const;
-
-type CategoryKey = keyof typeof CATEGORY_MAP;
+import {
+  CATEGORIES,
+  CATEGORY_OPTIONS,
+  type CategoryKey,
+} from "../constants/categories";
 
 type Task = {
   id: string;
@@ -53,8 +48,6 @@ const FAVORITE_TASKS: Task[] = [
     completed: false,
   },
 ];
-const CATEGORY_OPTIONS = Object.keys(CATEGORY_MAP) as CategoryKey[];
-
 export default function QuestsScreen() {
   const router = useRouter();
   const [tasks, setTasks] = useState(FAVORITE_TASKS);
@@ -145,7 +138,7 @@ export default function QuestsScreen() {
                 </Text>
                 <View style={styles.taskMetaRow}>
                   <Text style={styles.taskCategory}>
-                    {CATEGORY_MAP[item.category].icon} {CATEGORY_MAP[item.category].label}
+                    {CATEGORIES[item.category].icon} {CATEGORIES[item.category].label}
                   </Text>
                   <Text style={styles.taskXp}>+{item.xp} XP</Text>
                 </View>
@@ -177,7 +170,7 @@ export default function QuestsScreen() {
                           selectedCategory === category && styles.categoryLabelActive,
                         ]}
                       >
-                        {CATEGORY_MAP[category].label}
+                        {CATEGORIES[category].label}
                       </Text>
                     </Pressable>
                   ))}

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_session
 from ..models import User
-from ..schemas import AuthResponse, LoginRequest, RegisterRequest
+from ..schemas import AuthResponse, LoginRequest, RegisterRequest, UserSummary
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -62,7 +62,7 @@ def register_user(
     session.commit()
     session.refresh(user)
 
-    return AuthResponse(user=user)
+    return AuthResponse(user=UserSummary.model_validate(user))
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -78,4 +78,4 @@ def login_user(
             detail="Identifiants de connexion invalides.",
         )
 
-    return AuthResponse(user=user)
+    return AuthResponse(user=UserSummary.model_validate(user))

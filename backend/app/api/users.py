@@ -5,6 +5,8 @@ from datetime import datetime
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+import unicodedata
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -60,6 +62,19 @@ def compute_initials(name: str) -> str:
         return "?"
     initials = "".join(parts[:2])
     return initials.upper()
+
+
+def normalize_text(value: str) -> str:
+    """Normalize text for robust comparisons.
+
+    The function removes diacritics, lowers the case and trims whitespace.
+    This makes it easier to match domain identifiers that may have been
+    transformed by the client (e.g. different casing or accent stripping).
+    """
+
+    normalized = unicodedata.normalize("NFKD", value)
+    without_diacritics = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    return without_diacritics.lower().strip()
 
 
 def resolve_user(session: Session, user_id: UUID) -> User:
@@ -205,6 +220,16 @@ def create_task(
         )
 
     domain = session.scalar(select(Domain).where(Domain.key == payload.domain_key))
+    if not domain:
+        requested_key = normalize_text(payload.domain_key)
+        for candidate in session.scalars(select(Domain)):
+            if normalize_text(candidate.key) == requested_key:
+                domain = candidate
+                break
+            if candidate.name and normalize_text(candidate.name) == requested_key:
+                domain = candidate
+                break
+
     if not domain:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -26,11 +26,8 @@ install: $(PYTHON)
 run: $(PYTHON)
 	$(UVICORN) $(APP_MODULE) --reload
 
-migrate: $(PYTHON)
+upgrade: $(PYTHON)
 	$(ALEMBIC) upgrade head
-
-init: $(PYTHON)
-	$(ALEMBIC) init
 
 downgrade: $(PYTHON)
 	$(ALEMBIC) downgrade -1

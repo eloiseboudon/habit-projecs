@@ -1,7 +1,9 @@
 from functools import lru_cache
 from pathlib import Path
-from pydantic import BaseSettings, Field
+
 from dotenv import load_dotenv
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")

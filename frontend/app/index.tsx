@@ -1,5 +1,5 @@
-import { Redirect, useRootNavigationState, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
+import { Redirect, useRootNavigationState, useRouter } from "expo-router";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -11,9 +11,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import BottomNav from "../components/BottomNav";
-import { useAuth } from "../context/AuthContext";
-import { useHabitData } from "../context/HabitDataContext";
+import BottomNav from "../../components/BottomNav";
+import { useAuth } from "../../context/AuthContext";
+import { useHabitData } from "../../context/HabitDataContext";
 
 const DOMAIN_COLORS: Record<string, string> = {
   health: "#10b981",

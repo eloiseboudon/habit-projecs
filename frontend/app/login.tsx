@@ -12,8 +12,8 @@ import {
   View,
 } from "react-native";
 
-import { useAuth } from "../context/AuthContext";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "../../context/AuthContext";
 
 const EMAIL_REGEX = /.+@.+\..+/i;
 

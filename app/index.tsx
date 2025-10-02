@@ -1,4 +1,4 @@
-import { useRootNavigationState, useRouter } from "expo-router";
+import { Redirect, useRootNavigationState, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import {
   ActivityIndicator,
@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import BottomNav from "../components/BottomNav";
@@ -37,15 +36,13 @@ export default function Index() {
     isRefreshing,
   } = useHabitData();
 
-  useEffect(() => {
-    if (!navigationState?.key) {
-      return;
-    }
+  if (!navigationState?.key) {
+    return null;
+  }
 
-    if (authState.status !== "authenticated") {
-      router.replace("/login");
-    }
-  }, [authState.status, navigationState?.key, router]);
+  if (authState.status !== "authenticated") {
+    return <Redirect href="/login" />;
+  }
 
   const renderContent = () => {
     if ((status === "loading" || status === "idle") && !dashboard) {

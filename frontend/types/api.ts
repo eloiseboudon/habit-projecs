@@ -50,6 +50,12 @@ export type TaskListResponse = {
   tasks: TaskListItem[];
 };
 
+export type CreateTaskRequest = {
+  title: string;
+  domain_key: string;
+  xp: number;
+};
+
 export type HistoryItem = {
   id: string;
   title: string;

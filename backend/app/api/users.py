@@ -29,6 +29,7 @@ from ..schemas import (
     DashboardResponse,
     HistoryItem,
     ProgressionResponse,
+    TaskCreate,
     TaskListItem,
     TaskListResponse,
     UserSummary,
@@ -182,6 +183,58 @@ def list_tasks(user_id: UUID, session: Session = Depends(get_db_session)) -> Tas
         )
 
     return TaskListResponse(user_id=user.id, tasks=tasks)
+
+
+@router.post(
+    "/{user_id}/tasks",
+    response_model=TaskListItem,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_task(
+    user_id: UUID,
+    payload: TaskCreate,
+    session: Session = Depends(get_db_session),
+) -> TaskListItem:
+    user = resolve_user(session, user_id)
+
+    title = payload.title.strip()
+    if not title:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le titre de la quête est obligatoire.",
+        )
+
+    domain = session.scalar(select(Domain).where(Domain.key == payload.domain_key))
+    if not domain:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Domaine inconnu pour cette quête.",
+        )
+
+    user_task = UserTask(
+        user_id=user.id,
+        domain_id=domain.id,
+        custom_title=title,
+        custom_xp=payload.xp,
+        custom_points=payload.xp,
+        is_active=True,
+        is_favorite=True,
+    )
+
+    session.add(user_task)
+    session.commit()
+    session.refresh(user_task)
+
+    return TaskListItem(
+        id=user_task.id,
+        title=title,
+        domain_id=domain.id,
+        domain_key=domain.key,
+        domain_name=domain.name,
+        icon=domain.icon,
+        xp=payload.xp,
+        completed_today=False,
+    )
 
 
 @router.get("/{user_id}/progression", response_model=ProgressionResponse)

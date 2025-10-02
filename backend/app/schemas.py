@@ -187,6 +187,12 @@ class TaskListResponse(BaseModel):
     tasks: list[TaskListItem]
 
 
+class TaskCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    domain_key: str = Field(min_length=1, max_length=120)
+    xp: int = Field(default=10, ge=0, le=10000)
+
+
 class HistoryItem(BaseModel):
     id: UUID
     title: str

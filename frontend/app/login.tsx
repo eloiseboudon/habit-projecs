@@ -1,4 +1,4 @@
-import { useRootNavigationState, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,

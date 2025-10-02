@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import BottomNav from "../components/BottomNav";
+import { CATEGORIES, CATEGORY_OPTIONS } from "../constants/categories";
 import { useAuth } from "../context/AuthContext";
 import { useHabitData } from "../context/HabitDataContext";
 
@@ -69,6 +70,29 @@ export default function Index() {
       return null;
     }
 
+    const statsByKey = new Map(
+      dashboard.domain_stats.map((stat) => [stat.domain_key, stat]),
+    );
+    const orderedStats = CATEGORY_OPTIONS.map((key, index) => {
+      const stat = statsByKey.get(key);
+      if (stat) {
+        statsByKey.delete(key);
+        return stat;
+      }
+      const category = CATEGORIES[key];
+      return {
+        domain_id: -(index + 1),
+        domain_key: key,
+        domain_name: category.label,
+        icon: category.icon,
+        weekly_points: 0,
+        weekly_target: 0,
+        weekly_xp: 0,
+        progress_ratio: 0,
+      };
+    });
+    const statsToDisplay = [...orderedStats, ...statsByKey.values()];
+
     return (
       <>
         <View style={styles.avatarContainer}>
@@ -85,10 +109,10 @@ export default function Index() {
         </View>
 
         <View style={styles.statsContainer}>
-          {dashboard.domain_stats.map((stat) => {
+          {statsToDisplay.map((stat) => {
             const color = DOMAIN_COLORS[stat.domain_key] ?? "#58a6ff";
             return (
-              <View key={stat.domain_id} style={styles.statRow}>
+              <View key={`${stat.domain_key}-${stat.domain_id}`} style={styles.statRow}>
                 <View style={styles.statHeader}>
                   <Text style={styles.statLabel}>
                     {stat.icon ? `${stat.icon} ` : ""}

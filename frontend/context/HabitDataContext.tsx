@@ -1,7 +1,19 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { completeTaskLog, fetchDashboard, fetchProgression, fetchTasks } from "../lib/api";
-import type { DashboardResponse, ProgressionResponse, TaskListResponse, UserSummary } from "../types/api";
+import {
+  completeTaskLog,
+  createTask as createTaskApi,
+  fetchDashboard,
+  fetchProgression,
+  fetchTasks,
+} from "../lib/api";
+import type {
+  CreateTaskRequest,
+  DashboardResponse,
+  ProgressionResponse,
+  TaskListResponse,
+  UserSummary,
+} from "../types/api";
 import { useAuth } from "./AuthContext";
 
 type HabitDataState = {
@@ -17,6 +29,7 @@ type HabitDataContextValue = {
   state: HabitDataState;
   refresh: () => Promise<void>;
   completeTask: (taskId: string) => Promise<void>;
+  createTask: (payload: CreateTaskRequest) => Promise<void>;
   isRefreshing: boolean;
 };
 
@@ -117,14 +130,26 @@ export function HabitDataProvider({ children }: { children: React.ReactNode }) {
     [refresh, state.user],
   );
 
+  const createTask = useCallback(
+    async (payload: CreateTaskRequest) => {
+      if (!state.user) {
+        throw new Error("Utilisateur non chargé");
+      }
+      await createTaskApi(state.user.id, payload);
+      await refresh();
+    },
+    [refresh, state.user],
+  );
+
   const value = useMemo<HabitDataContextValue>(
     () => ({
       state,
       refresh,
       completeTask,
+      createTask,
       isRefreshing,
     }),
-    [state, refresh, completeTask, isRefreshing],
+    [state, refresh, completeTask, createTask, isRefreshing],
   );
 
   return <HabitDataContext.Provider value={value}>{children}</HabitDataContext.Provider>;

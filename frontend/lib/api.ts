@@ -1,8 +1,10 @@
 import type {
   AuthResponse,
+  CreateTaskRequest,
   DashboardResponse,
   ProgressionResponse,
   RegisterRequest,
+  TaskListItem,
   TaskListResponse,
   UserSummary,
 } from "../types/api";
@@ -150,6 +152,18 @@ export async function fetchTasks(userId: string): Promise<TaskListResponse> {
     headers: buildJsonHeaders(),
   });
   return handleResponse<TaskListResponse>(response);
+}
+
+export async function createTask(
+  userId: string,
+  payload: CreateTaskRequest,
+): Promise<TaskListItem> {
+  const response = await fetch(`${API_URL}/users/${userId}/tasks`, {
+    method: "POST",
+    headers: buildJsonHeaders(true),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<TaskListItem>(response);
 }
 
 export async function fetchProgression(

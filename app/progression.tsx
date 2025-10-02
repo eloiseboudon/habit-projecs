@@ -1,179 +1,180 @@
-import { useRouter } from "expo-router";
-import { Feather } from "@expo/vector-icons";
+import { useRootNavigationState, useRouter } from "expo-router";
+import { useEffect, useMemo } from "react";
 import {
-  FlatList,
+  ActivityIndicator,
   Pressable,
-  SafeAreaView,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
+  FlatList,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
+
 import BottomNav from "../components/BottomNav";
+import { useAuth } from "../context/AuthContext";
+import { useHabitData } from "../context/HabitDataContext";
 import { CATEGORIES, type CategoryKey } from "../constants/categories";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-type HistoryItem = {
-  id: string;
-  action: string;
-  date: string;
-  xp: number;
-  category: CategoryKey;
-};
+function formatHistoryDate(isoDate: string): string {
+  const date = new Date(isoDate);
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-const RECENT_HISTORY: HistoryItem[] = [
-  {
-    id: "h1",
-    action: "Hydratation du matin",
-    date: "Aujourd’hui • 08:30",
-    xp: 15,
-    category: "health",
-  },
-  {
-    id: "h2",
-    action: "Méditation express",
-    date: "Aujourd’hui • 07:10",
-    xp: 20,
-    category: "wellness",
-  },
-  {
-    id: "h3",
-    action: "Revue budget",
-    date: "Hier • 19:45",
-    xp: 25,
-    category: "finance",
-  },
-  {
-    id: "h4",
-    action: "Lecture pro",
-    date: "Hier • 15:20",
-    xp: 18,
-    category: "work",
-  },
-];
+  const todayLabel = now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const dateLabel = date.toDateString();
 
-const WEEKLY_STATS = [
-  {
-    id: "health",
-    icon: "⚡",
-    label: "Santé",
-    highlight: "+35 XP",
-    highlightColor: "#34d399",
-  },
-  {
-    id: "finance",
-    icon: "💰",
-    label: "Finances",
-    highlight: "+20 XP",
-    highlightColor: "#facc15",
-  },
-  {
-    id: "work",
-    icon: "📚",
-    label: "Travail",
-    highlight: "+15 XP",
-    highlightColor: "#60a5fa",
-  },
-  {
-    id: "relations",
-    icon: "❤️",
-    label: "Relations",
-    highlight: "+6 XP",
-    highlightColor: "#f472b6",
-  },
-];
-
-const UNLOCKED_BADGES = [
-  {
-    id: "b1",
-    icon: "🏆",
-    title: "3 jours consécutifs",
-    subtitle: "Continue comme ça !",
-  },
-];
+  if (dateLabel === todayLabel) {
+    return `Aujourd’hui • ${formatter.format(date)}`;
+  }
+  if (dateLabel === yesterday.toDateString()) {
+    return `Hier • ${formatter.format(date)}`;
+  }
+  return `${date.toLocaleDateString("fr-FR")} • ${formatter.format(date)}`;
+}
 
 export default function ProgressionScreen() {
   const router = useRouter();
+  const navigationState = useRootNavigationState();
+  const {
+    state: authState,
+  } = useAuth();
+  const {
+    state: { status, progression, errorMessage },
+    refresh,
+    isRefreshing,
+  } = useHabitData();
 
+  useEffect(() => {
+    if (!navigationState?.key) {
+      return;
+    }
+
+    if (authState.status !== "authenticated") {
+      router.replace("/login");
+    }
+  }, [authState.status, navigationState?.key, router]);
+
+  const historyItems = useMemo(() => progression?.recent_history ?? [], [progression]);
+  const weeklyStats = useMemo(() => progression?.weekly_stats ?? [], [progression]);
+  const badges = useMemo(() => progression?.badges ?? [], [progression]);
+
+  if ((status === "loading" || status === "idle") && !progression) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.screen, styles.centered]}>
+          <ActivityIndicator size="large" color="#58a6ff" />
+          <Text style={styles.loadingLabel}>Chargement de votre progression…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (status === "error" && !progression) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.screen, styles.centered]}>
+          <Text style={styles.errorLabel}>{errorMessage ?? "Impossible de charger la progression."}</Text>
+          <Pressable style={styles.retryButton} onPress={() => refresh()}>
+            <Text style={styles.retryButtonLabel}>Réessayer</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
         <FlatList
-          contentContainerStyle={styles.content}
+          data={[]}
+          keyExtractor={(_, index) => index.toString()}
+          renderItem={() => null}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={() => refresh()} tintColor="#58a6ff" />
+          }
           ListHeaderComponent={
             <>
               <View style={styles.headerRow}>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => router.push("/")}
-                  style={styles.backButton}
-                >
+                <Pressable accessibilityRole="button" onPress={() => router.push("/")} style={styles.backButton}>
                   <Feather name="chevron-left" size={22} color="#e5e7eb" />
                 </Pressable>
                 <Text style={styles.headerTitle}>Ma Progression</Text>
               </View>
-
               <Text style={styles.headerSubtitle}>
-                Suis ton évolution et découvre les récompenses débloquées.
+                Suivez l’impact de vos habitudes et découvrez les récompenses débloquées.
               </Text>
 
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Historique récent</Text>
-                <View>
-                  {RECENT_HISTORY.map((item, index) => (
-                    <View
-                      key={item.id}
-                      style={[
-                        styles.historyItem,
-                        index !== RECENT_HISTORY.length - 1 && styles.historyItemSpacing,
-                      ]}
-                    >
-                      <Text style={styles.historyIcon}>
-                        {CATEGORIES[item.category].icon}
-                      </Text>
-                      <View style={styles.historyContent}>
-                        <Text style={styles.historyAction}>{item.action}</Text>
-                        <Text style={styles.historyDate}>{item.date}</Text>
+                {historyItems.length === 0 ? (
+                  <Text style={styles.emptyText}>Aucun log enregistré récemment.</Text>
+                ) : (
+                  historyItems.map((item) => {
+                    const category = CATEGORIES[item.domain_key as CategoryKey] ?? null;
+                    const icon = item.icon ?? category?.icon ?? "⭐";
+                    return (
+                      <View key={item.id} style={styles.historyItem}>
+                        <Text style={styles.historyIcon}>{icon}</Text>
+                        <View style={styles.historyContent}>
+                          <Text style={styles.historyAction}>{item.title}</Text>
+                          <Text style={styles.historyDate}>{formatHistoryDate(item.occurred_at)}</Text>
+                        </View>
+                        <Text style={styles.historyXp}>+{item.xp_awarded} XP</Text>
                       </View>
-                      <Text style={styles.historyXp}>+{item.xp} XP</Text>
-                    </View>
-                  ))}
-                </View>
+                    );
+                  })
+                )}
               </View>
 
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Statistiques hebdo</Text>
-                <View style={styles.statsGrid}>
-                  {WEEKLY_STATS.map((stat) => (
-                    <View key={stat.id} style={styles.statCard}>
-                      <Text style={styles.statIcon}>{stat.icon}</Text>
-                      <Text style={styles.statLabel}>{stat.label}</Text>
-                      <Text
-                        style={[styles.statHighlight, { color: stat.highlightColor }]}
-                      >
-                        {stat.highlight}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
+                {weeklyStats.length === 0 ? (
+                  <Text style={styles.emptyText}>Aucune donnée pour cette semaine.</Text>
+                ) : (
+                  <View style={styles.statsGrid}>
+                    {weeklyStats.map((stat) => {
+                      const category = CATEGORIES[stat.domain_key as CategoryKey] ?? null;
+                      const icon = stat.icon ?? category?.icon ?? "📈";
+                      const label = category?.label ?? stat.domain_name;
+                      return (
+                        <View key={stat.domain_id} style={styles.statCard}>
+                          <Text style={styles.statIcon}>{icon}</Text>
+                          <Text style={styles.statLabel}>{label}</Text>
+                          <Text style={styles.statHighlight}>+{stat.weekly_xp} XP</Text>
+                          <Text style={styles.statSubHighlight}>{stat.weekly_points} pts</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
 
               <View style={styles.badgeCard}>
                 <Text style={styles.badgeCardTitle}>Badges débloqués</Text>
-                {UNLOCKED_BADGES.map((badge) => (
-                  <View key={badge.id} style={styles.badgeRow}>
-                    <Text style={styles.badgeIcon}>{badge.icon}</Text>
-                    <View style={styles.badgeContent}>
-                      <Text style={styles.badgeTitle}>{badge.title}</Text>
-                      <Text style={styles.badgeSubtitle}>{badge.subtitle}</Text>
+                {badges.length === 0 ? (
+                  <Text style={styles.emptyText}>Continuez à progresser pour débloquer vos premiers badges !</Text>
+                ) : (
+                  badges.map((badge) => (
+                    <View key={badge.id} style={styles.badgeRow}>
+                      <Text style={styles.badgeIcon}>🏆</Text>
+                      <View style={styles.badgeContent}>
+                        <Text style={styles.badgeTitle}>{badge.title}</Text>
+                        <Text style={styles.badgeSubtitle}>{badge.subtitle}</Text>
+                      </View>
                     </View>
-                  </View>
-                ))}
+                  ))
+                )}
               </View>
             </>
           }
-          data={[]}
-          keyExtractor={(_, index) => index.toString()}
-          renderItem={() => null}
         />
         <BottomNav />
       </View>
@@ -190,10 +191,35 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0f172a",
   },
-  content: {
+  listContent: {
     paddingHorizontal: 24,
     paddingBottom: 140,
     paddingTop: 28,
+    gap: 20,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(30, 41, 59, 0.8)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.25)",
+  },
+  headerTitle: {
+    color: "#e2e8f0",
+    fontSize: 22,
+    fontWeight: "700",
+  },
+  headerSubtitle: {
+    color: "#94a3b8",
+    fontSize: 15,
   },
   card: {
     backgroundColor: "rgba(30, 41, 59, 0.65)",
@@ -201,134 +227,138 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 20,
     padding: 20,
-    marginBottom: 26,
+    gap: 16,
   },
   cardTitle: {
-    color: "#c4b5fd",
+    color: "#e2e8f0",
     fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 18,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(17, 24, 39, 0.8)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
-  },
-  headerTitle: {
-    color: "#f9fafb",
-    fontSize: 24,
-    fontWeight: "700",
-  },
-  headerSubtitle: {
-    color: "#9ca3af",
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  historyItem: {
-    backgroundColor: "rgba(15, 23, 42, 0.6)",
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  historyItemSpacing: {
-    marginBottom: 12,
-  },
-  historyIcon: {
-    fontSize: 26,
-    marginRight: 12,
-  },
-  historyContent: {
-    flex: 1,
-  },
-  historyAction: {
-    color: "#e5e7eb",
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  historyDate: {
-    color: "#6b7280",
-    fontSize: 12,
-  },
-  historyXp: {
-    color: "#c4b5fd",
-    fontSize: 14,
     fontWeight: "700",
   },
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between",
+    gap: 12,
   },
   statCard: {
-    width: "48%",
+    flexBasis: "48%",
     backgroundColor: "rgba(15, 23, 42, 0.65)",
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(59, 130, 246, 0.25)",
     padding: 16,
-    marginBottom: 12,
+    gap: 8,
   },
   statIcon: {
     fontSize: 24,
-    marginBottom: 10,
   },
   statLabel: {
-    color: "#9ca3af",
-    fontSize: 12,
-    marginBottom: 6,
+    color: "#e2e8f0",
+    fontSize: 16,
+    fontWeight: "600",
   },
   statHighlight: {
-    fontSize: 16,
-    fontWeight: "700",
+    color: "#34d399",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  statSubHighlight: {
+    color: "#94a3b8",
+    fontSize: 13,
   },
   badgeCard: {
-    backgroundColor: "rgba(202, 138, 4, 0.16)",
-    borderColor: "rgba(234, 179, 8, 0.35)",
+    backgroundColor: "rgba(15, 23, 42, 0.85)",
+    borderColor: "rgba(59, 130, 246, 0.3)",
     borderWidth: 1,
-    borderRadius: 22,
-    padding: 22,
-    marginBottom: 40,
+    borderRadius: 20,
+    padding: 20,
+    gap: 16,
   },
   badgeCardTitle: {
-    color: "#facc15",
+    color: "#f8fafc",
     fontSize: 18,
     fontWeight: "700",
-    marginBottom: 18,
   },
   badgeRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(15, 23, 42, 0.4)",
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    gap: 12,
   },
   badgeIcon: {
-    fontSize: 32,
-    marginRight: 14,
+    fontSize: 28,
   },
   badgeContent: {
     flex: 1,
+    gap: 4,
   },
   badgeTitle: {
-    color: "#fbbf24",
+    color: "#f9fafb",
     fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 4,
+    fontWeight: "600",
   },
   badgeSubtitle: {
-    color: "#f3f4f6",
-    fontSize: 12,
+    color: "#cbd5f5",
+    fontSize: 14,
+  },
+  historyItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    backgroundColor: "rgba(15, 23, 42, 0.65)",
+    borderWidth: 1,
+    borderColor: "rgba(75, 85, 99, 0.35)",
+    borderRadius: 20,
+    padding: 18,
+  },
+  historyIcon: {
+    fontSize: 24,
+  },
+  historyContent: {
+    flex: 1,
+    gap: 4,
+  },
+  historyAction: {
+    color: "#f8fafc",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  historyDate: {
+    color: "#94a3b8",
+    fontSize: 13,
+  },
+  historyXp: {
+    color: "#facc15",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  emptyText: {
+    color: "#cbd5f5",
+    fontSize: 15,
+    textAlign: "center",
+  },
+  centered: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+  },
+  loadingLabel: {
+    color: "#cbd5f5",
+    fontSize: 16,
+    textAlign: "center",
+  },
+  errorLabel: {
+    color: "#f87171",
+    fontSize: 16,
+    textAlign: "center",
+    paddingHorizontal: 12,
+  },
+  retryButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: "#1f6feb",
+  },
+  retryButtonLabel: {
+    color: "#f8fafc",
+    fontWeight: "600",
   },
 });

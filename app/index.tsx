@@ -1,26 +1,145 @@
-import { useRouter } from "expo-router";
+import { useRootNavigationState, useRouter } from "expo-router";
+import { Feather } from "@expo/vector-icons";
 import {
-  SafeAreaView,
+  ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
-import BottomNav from "../components/BottomNav";
+import { useEffect } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-const STAT_BARS = [
-  { label: "Santé", value: 0.8, color: "#10b981", icon: '⚡' },
-  { label: "Énergie", value: 0.65, color: "#2ea043", icon: '🔋' },
-  { label: "Discipline", value: 0.72, color: "#3b82f6", icon: '🛡️' },
-  { label: "Finances", value: 0.4, color: "#f59e0b", icon: '💰' },
-  { label: "Relations", value: 0.55, color: "#ec4899", icon: '👥' },
-  { label: "Bien-être", value: 0.9, color: "#8b5cf6", icon: '🧘' },
-];
+import BottomNav from "../components/BottomNav";
+import { useAuth } from "../context/AuthContext";
+import { useHabitData } from "../context/HabitDataContext";
+
+const DOMAIN_COLORS: Record<string, string> = {
+  health: "#10b981",
+  finance: "#f59e0b",
+  work: "#3b82f6",
+  relations: "#ec4899",
+  wellness: "#8b5cf6",
+};
 
 export default function Index() {
   const router = useRouter();
+  const navigationState = useRootNavigationState();
+  const {
+    state: authState,
+    logout,
+  } = useAuth();
+  const {
+    state: { status, dashboard, errorMessage },
+    refresh,
+    isRefreshing,
+  } = useHabitData();
+
+  useEffect(() => {
+    if (!navigationState?.key) {
+      return;
+    }
+
+    if (authState.status !== "authenticated") {
+      router.replace("/login");
+    }
+  }, [authState.status, navigationState?.key, router]);
+
+  const renderContent = () => {
+    if ((status === "loading" || status === "idle") && !dashboard) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#58a6ff" />
+          <Text style={styles.loadingLabel}>Chargement de votre tableau de bord…</Text>
+        </View>
+      );
+    }
+
+    if (status === "error" && !dashboard) {
+      return (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.errorLabel}>{errorMessage ?? "Une erreur est survenue."}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => refresh()}>
+            <Text style={styles.retryButtonLabel}>Réessayer</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (!dashboard) {
+      return null;
+    }
+
+    return (
+      <>
+        <View style={styles.avatarContainer}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarInitials}>{dashboard.initials}</Text>
+          </View>
+          <View>
+            <Text style={styles.displayName}>{dashboard.display_name}</Text>
+            <Text style={styles.levelLabel}>Niveau {dashboard.level}</Text>
+            <Text style={styles.xpText}>
+              {dashboard.current_xp} XP / {dashboard.xp_to_next} XP
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.statsContainer}>
+          {dashboard.domain_stats.map((stat) => {
+            const color = DOMAIN_COLORS[stat.domain_key] ?? "#58a6ff";
+            return (
+              <View key={stat.domain_id} style={styles.statRow}>
+                <View style={styles.statHeader}>
+                  <Text style={styles.statLabel}>
+                    {stat.icon ? `${stat.icon} ` : ""}
+                    {stat.domain_name}
+                  </Text>
+                  <Text style={styles.statValue}>{Math.round(stat.progress_ratio * 100)}%</Text>
+                </View>
+                <View style={styles.progressBarBackground}>
+                  <View
+                    style={[
+                      styles.progressBarFill,
+                      {
+                        width: `${Math.min(stat.progress_ratio * 100, 100)}%`,
+                        backgroundColor: color,
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.statSubtitle}>
+                  {stat.weekly_points} pts / {stat.weekly_target} visés • {stat.weekly_xp} XP
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={[styles.ctaButton, styles.questsButton]}
+            onPress={() => router.push("/quests")}
+            activeOpacity={0.85}
+          >
+            <Feather name="target" size={28} color="#ffffff" />
+            <Text style={styles.ctaLabel}>Mes Quêtes</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.ctaButton, styles.progressButton]}
+            onPress={() => router.push("/progression")}
+            activeOpacity={0.85}
+          >
+            <Feather name="trending-up" size={28} color="#ffffff" />
+            <Text style={styles.ctaLabel}>Progression</Text>
+          </TouchableOpacity>
+        </View>
+      </>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -28,63 +147,24 @@ export default function Index() {
         <ScrollView
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={() => refresh()} tintColor="#58a6ff" />
+          }
         >
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarInitials}>JD</Text>
-            </View>
-            <View>
-              <Text style={styles.levelLabel}>Niveau 12</Text>
-              <Text style={styles.xpText}>340 XP / 500 XP</Text>
-            </View>
-          </View>
-
-          <View style={styles.statsContainer}>
-            {STAT_BARS.map((stat) => (
-              <View key={stat.label} style={styles.statRow}>
-                <View style={styles.statHeader}>
-                  <Text style={styles.statLabel}>
-                    {stat.icon} {stat.label}
-                  </Text>
-                  <Text style={styles.statValue}>
-                    {Math.round(stat.value * 100)}%
-                  </Text>
-                </View>
-                <View style={styles.progressBarBackground}>
-                  <View
-                    style={[
-                      styles.progressBarFill,
-                      {
-                        width: `${Math.min(stat.value * 100, 100)}%`,
-                        backgroundColor: stat.color,
-                      },
-                    ]}
-                  />
-                </View>
-
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.actionButtons}>
+          <View style={styles.topBar}>
+            <Text style={styles.screenHeading}>Tableau de bord</Text>
             <TouchableOpacity
-              style={[styles.ctaButton, styles.questsButton]}
-              onPress={() => router.push("/quests")}
-              activeOpacity={0.85}
+              style={styles.logoutButton}
+              onPress={() => {
+                logout();
+                router.replace("/login");
+              }}
             >
-              <Feather name="target" size={28} color="#ffffff" />
-              <Text style={styles.ctaLabel}>Mes Quêtes</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.ctaButton, styles.progressButton]}
-              onPress={() => router.push("/progression")}
-              activeOpacity={0.85}
-            >
-              <Feather name="trending-up" size={28} color="#ffffff" />
-              <Text style={styles.ctaLabel}>Progression</Text>
+              <Feather name="log-out" size={18} color="#f8fafc" />
+              <Text style={styles.logoutLabel}>Déconnexion</Text>
             </TouchableOpacity>
           </View>
+          {renderContent()}
         </ScrollView>
         <BottomNav />
       </View>
@@ -106,6 +186,32 @@ const styles = StyleSheet.create({
     paddingTop: 32,
     paddingBottom: 120,
     gap: 32,
+  },
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  screenHeading: {
+    color: "#f8fafc",
+    fontSize: 22,
+    fontWeight: "700",
+  },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#30363d",
+    backgroundColor: "#161b2233",
+  },
+  logoutLabel: {
+    color: "#f8fafc",
+    fontSize: 14,
+    fontWeight: "600",
   },
   avatarContainer: {
     flexDirection: "row",
@@ -130,11 +236,16 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: "700",
   },
-  levelLabel: {
-    color: "white",
+  displayName: {
+    color: "#f8fafc",
     fontSize: 18,
     fontWeight: "700",
     marginBottom: 4,
+  },
+  levelLabel: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
   },
   xpText: {
     color: "#8b949e",
@@ -143,10 +254,31 @@ const styles = StyleSheet.create({
   statsContainer: {
     gap: 16,
   },
-  sectionTitle: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "700",
+  loadingContainer: {
+    paddingVertical: 120,
+    gap: 16,
+    alignItems: "center",
+  },
+  loadingLabel: {
+    color: "#cbd5f5",
+    fontSize: 16,
+    textAlign: "center",
+  },
+  errorLabel: {
+    color: "#f87171",
+    fontSize: 16,
+    textAlign: "center",
+    paddingHorizontal: 12,
+  },
+  retryButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: "#1f6feb",
+  },
+  retryButtonLabel: {
+    color: "#f8fafc",
+    fontWeight: "600",
   },
   statRow: {
     backgroundColor: "#161b22",
@@ -166,6 +298,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  statValue: {
+    color: "#8b949e",
+    fontSize: 14,
+    fontWeight: "500",
+    textAlign: "right",
+  },
   progressBarBackground: {
     height: 12,
     borderRadius: 8,
@@ -175,12 +313,11 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: "100%",
     backgroundColor: "#2ea043",
+    borderRadius: 8,
   },
-  statValue: {
+  statSubtitle: {
     color: "#8b949e",
-    fontSize: 14,
-    fontWeight: "500",
-    textAlign: "right",
+    fontSize: 13,
   },
   actionButtons: {
     flexDirection: "row",

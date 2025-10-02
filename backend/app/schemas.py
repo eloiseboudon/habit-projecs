@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from .models import ChallengeStatus, SnapshotPeriod, SourceType
 
@@ -122,3 +122,100 @@ class UserChallengeRead(BaseModel):
 
     class Config:
         model_config = ConfigDict(from_attributes=True)
+
+
+class UserSummary(BaseModel):
+    id: UUID
+    display_name: str
+
+    class Config:
+        model_config = ConfigDict(from_attributes=True)
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1)
+
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=6)
+    display_name: str = Field(min_length=1)
+
+
+class AuthResponse(BaseModel):
+    user: UserSummary
+
+    class Config:
+        model_config = ConfigDict(from_attributes=True)
+
+
+class DashboardDomainStat(BaseModel):
+    domain_id: int
+    domain_key: str
+    domain_name: str
+    icon: Optional[str]
+    weekly_points: int
+    weekly_target: int
+    weekly_xp: int
+    progress_ratio: float
+
+
+class DashboardResponse(BaseModel):
+    user_id: UUID
+    display_name: str
+    initials: str
+    level: int
+    current_xp: int
+    xp_to_next: int
+    domain_stats: list[DashboardDomainStat]
+
+
+class TaskListItem(BaseModel):
+    id: UUID
+    title: str
+    domain_id: int
+    domain_key: str
+    domain_name: str
+    icon: Optional[str]
+    xp: int
+    completed_today: bool
+
+
+class TaskListResponse(BaseModel):
+    user_id: UUID
+    tasks: list[TaskListItem]
+
+
+class HistoryItem(BaseModel):
+    id: UUID
+    title: str
+    occurred_at: datetime
+    xp_awarded: int
+    domain_id: int
+    domain_key: str
+    domain_name: str
+    icon: Optional[str]
+
+
+class WeeklyStat(BaseModel):
+    domain_id: int
+    domain_key: str
+    domain_name: str
+    icon: Optional[str]
+    weekly_points: int
+    weekly_xp: int
+
+
+class BadgeItem(BaseModel):
+    id: str
+    title: str
+    subtitle: str
+    domain_id: Optional[int]
+
+
+class ProgressionResponse(BaseModel):
+    user_id: UUID
+    recent_history: list[HistoryItem]
+    weekly_stats: list[WeeklyStat]
+    badges: list[BadgeItem]

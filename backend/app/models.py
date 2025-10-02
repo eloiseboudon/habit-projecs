@@ -21,7 +21,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 
 from .database import Base
 
@@ -233,7 +233,7 @@ class TaskLog(Base, TimestampMixin):
     domain: Mapped[Domain] = relationship("Domain")
     xp_events: Mapped[list["XPEvent"]] = relationship(
         "XPEvent",
-        primaryjoin="TaskLog.id==XPEvent.source_id",
+        primaryjoin=lambda: TaskLog.id == foreign(XPEvent.source_id),
         viewonly=True,
     )
 
@@ -262,7 +262,7 @@ class XPEvent(Base):
     domain: Mapped[Domain | None] = relationship("Domain")
     task_log: Mapped[TaskLog | None] = relationship(
         "TaskLog",
-        primaryjoin="XPEvent.source_id==TaskLog.id",
+        primaryjoin=lambda: foreign(XPEvent.source_id) == TaskLog.id,
         viewonly=True,
     )
 

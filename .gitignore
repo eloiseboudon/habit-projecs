@@ -41,3 +41,13 @@ app-example
 # generated native folders
 /ios
 /android
+
+
+
+backend/app/__pycache__/*
+backend/app/api/__pycache__/*
+backend/app/database/__pycache__/*
+backend/app/models/__pycache__/*
+backend/app/schemas/__pycache__/*
+backend/app/services/__pycache__/*
+backend/app/utils/__pycache__/*

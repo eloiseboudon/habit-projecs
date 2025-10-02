@@ -49,7 +49,10 @@ export default function Index() {
                   <View
                     style={[
                       styles.progressBarFill,
-                      { width: `${Math.min(stat.value * 100, 100)}%` },
+                      {
+                        width: `${Math.min(stat.value * 100, 100)}%`,
+                        backgroundColor: stat.color,
+                      },
                     ]}
                   />
                 </View>

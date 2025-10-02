@@ -29,6 +29,9 @@ run: $(PYTHON)
 migrate: $(PYTHON)
 	$(ALEMBIC) upgrade head
 
+init: $(PYTHON)
+	$(ALEMBIC) init
+
 downgrade: $(PYTHON)
 	$(ALEMBIC) downgrade -1
 

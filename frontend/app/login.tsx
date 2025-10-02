@@ -21,7 +21,6 @@ type AuthMode = "login" | "register";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const navigationState = useRootNavigationState();
   const {
     state: { status, errorMessage },
     login,
@@ -37,14 +36,10 @@ export default function LoginScreen() {
   const isLoading = status === "checking";
 
   useEffect(() => {
-    if (!navigationState?.key) {
-      return;
-    }
-
     if (status === "authenticated") {
       router.replace("/");
     }
-  }, [navigationState?.key, router, status]);
+  }, [router, status]);
 
   useEffect(() => {
     setLocalError(undefined);

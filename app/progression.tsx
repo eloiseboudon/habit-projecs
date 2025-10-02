@@ -1,10 +1,9 @@
-import { useRouter } from "expo-router";
+import { useRootNavigationState, useRouter } from "expo-router";
 import { useEffect, useMemo } from "react";
 import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
@@ -16,6 +15,7 @@ import BottomNav from "../components/BottomNav";
 import { useAuth } from "../context/AuthContext";
 import { useHabitData } from "../context/HabitDataContext";
 import { CATEGORIES, type CategoryKey } from "../constants/categories";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 function formatHistoryDate(isoDate: string): string {
   const date = new Date(isoDate);
@@ -41,6 +41,7 @@ function formatHistoryDate(isoDate: string): string {
 
 export default function ProgressionScreen() {
   const router = useRouter();
+  const navigationState = useRootNavigationState();
   const {
     state: authState,
   } = useAuth();
@@ -51,10 +52,14 @@ export default function ProgressionScreen() {
   } = useHabitData();
 
   useEffect(() => {
+    if (!navigationState?.key) {
+      return;
+    }
+
     if (authState.status !== "authenticated") {
       router.replace("/login");
     }
-  }, [authState.status, router]);
+  }, [authState.status, navigationState?.key, router]);
 
   const historyItems = useMemo(() => progression?.recent_history ?? [], [progression]);
   const weeklyStats = useMemo(() => progression?.weekly_stats ?? [], [progression]);

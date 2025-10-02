@@ -1,10 +1,9 @@
-import { useRouter } from "expo-router";
+import { useRootNavigationState, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,6 +13,7 @@ import {
 } from "react-native";
 
 import { useAuth } from "../context/AuthContext";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const EMAIL_REGEX = /.+@.+\..+/i;
 
@@ -21,6 +21,7 @@ type AuthMode = "login" | "register";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const navigationState = useRootNavigationState();
   const {
     state: { status, errorMessage },
     login,
@@ -36,10 +37,14 @@ export default function LoginScreen() {
   const isLoading = status === "checking";
 
   useEffect(() => {
+    if (!navigationState?.key) {
+      return;
+    }
+
     if (status === "authenticated") {
       router.replace("/");
     }
-  }, [router, status]);
+  }, [navigationState?.key, router, status]);
 
   useEffect(() => {
     setLocalError(undefined);

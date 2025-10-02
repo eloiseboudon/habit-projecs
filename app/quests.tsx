@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useRootNavigationState, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -6,7 +6,6 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
@@ -17,9 +16,11 @@ import BottomNav from "../components/BottomNav";
 import { useAuth } from "../context/AuthContext";
 import { useHabitData } from "../context/HabitDataContext";
 import { CATEGORIES, type CategoryKey } from "../constants/categories";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function QuestsScreen() {
   const router = useRouter();
+  const navigationState = useRootNavigationState();
   const {
     state: authState,
   } = useAuth();
@@ -32,10 +33,14 @@ export default function QuestsScreen() {
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!navigationState?.key) {
+      return;
+    }
+
     if (authState.status !== "authenticated") {
       router.replace("/login");
     }
-  }, [authState.status, router]);
+  }, [authState.status, navigationState?.key, router]);
 
   const questItems = useMemo(() => tasks?.tasks ?? [], [tasks]);
   const isInitialLoading =

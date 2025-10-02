@@ -1,9 +1,8 @@
-import { useRouter } from "expo-router";
+import { useRootNavigationState, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import {
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { useEffect } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import BottomNav from "../components/BottomNav";
 import { useAuth } from "../context/AuthContext";
@@ -26,6 +26,7 @@ const DOMAIN_COLORS: Record<string, string> = {
 
 export default function Index() {
   const router = useRouter();
+  const navigationState = useRootNavigationState();
   const {
     state: authState,
     logout,
@@ -37,10 +38,14 @@ export default function Index() {
   } = useHabitData();
 
   useEffect(() => {
+    if (!navigationState?.key) {
+      return;
+    }
+
     if (authState.status !== "authenticated") {
       router.replace("/login");
     }
-  }, [authState.status, router]);
+  }, [authState.status, navigationState?.key, router]);
 
   const renderContent = () => {
     if ((status === "loading" || status === "idle") && !dashboard) {

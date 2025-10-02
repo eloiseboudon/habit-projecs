@@ -1,9 +1,15 @@
 import { Stack } from "expo-router";
 
+import { HabitDataProvider } from "../context/HabitDataContext";
+
 export default function RootLayout() {
-  return <Stack
-    screenOptions={{
-      headerShown: false,
-    }}
-  />;
+  return (
+    <HabitDataProvider>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+        }}
+      />
+    </HabitDataProvider>
+  );
 }

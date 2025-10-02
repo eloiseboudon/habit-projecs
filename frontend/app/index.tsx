@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import BottomNav from "../../components/BottomNav";
+import BottomNav from "../components/BottomNav";
 import { useAuth } from "../../context/AuthContext";
 import { useHabitData } from "../../context/HabitDataContext";
 

@@ -10,12 +10,12 @@ import {
 import BottomNav from "../components/BottomNav";
 
 const STAT_BARS = [
-  { label: "Santé", value: 0.8 },
-  { label: "Énergie", value: 0.65 },
-  { label: "Discipline", value: 0.72 },
-  { label: "Finances", value: 0.4 },
-  { label: "Relations", value: 0.55 },
-  { label: "Bien-être", value: 0.9 },
+  { label: "Santé", value: 0.8, color: "#10b981", icon: '⚡' },
+  { label: "Énergie", value: 0.65, color: "#2ea043", icon: '🔋' },
+  { label: "Discipline", value: 0.72, color: "#3b82f6", icon: '🛡️' },
+  { label: "Finances", value: 0.4, color: "#f59e0b", icon: '💰' },
+  { label: "Relations", value: 0.55, color: "#ec4899", icon: '👥' },
+  { label: "Bien-être", value: 0.9, color: "#8b5cf6", icon: '🧘' },
 ];
 
 export default function Index() {
@@ -39,10 +39,12 @@ export default function Index() {
           </View>
 
           <View style={styles.statsContainer}>
-            <Text style={styles.sectionTitle}>Statistiques</Text>
             {STAT_BARS.map((stat) => (
               <View key={stat.label} style={styles.statRow}>
-                <Text style={styles.statLabel}>{stat.label}</Text>
+                <Text style={styles.statLabel}>{stat.icon} {stat.label}</Text>
+                <Text style={styles.statValue}>
+                  {Math.round(stat.value * 100)}%
+                </Text>
                 <View style={styles.progressBarBackground}>
                   <View
                     style={[
@@ -51,9 +53,7 @@ export default function Index() {
                     ]}
                   />
                 </View>
-                <Text style={styles.statValue}>
-                  {Math.round(stat.value * 100)}%
-                </Text>
+
               </View>
             ))}
           </View>
@@ -63,7 +63,7 @@ export default function Index() {
               style={[styles.ctaButton, styles.primaryButton]}
               onPress={() => router.push("/quests")}
             >
-              <Text style={styles.ctaLabel}>Quêtes / Tâches</Text>
+              <Text style={styles.ctaLabel}>Mes Quêtes</Text>
               <Text style={styles.ctaDescription}>
                 Consulte tes priorités et ajoute de nouvelles missions quotidiennes.
               </Text>
@@ -169,6 +169,7 @@ const styles = StyleSheet.create({
     color: "#8b949e",
     fontSize: 14,
     fontWeight: "500",
+    textAlign: "right",
   },
   actionButtons: {
     gap: 16,

@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { useMemo, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -8,7 +9,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useMemo, useState } from "react";
 import BottomNav from "../components/BottomNav";
 
 type Task = {
@@ -98,7 +98,7 @@ export default function QuestsScreen() {
                 <Pressable onPress={() => router.push("/")}>
                   <Text style={styles.backLink}>← Accueil</Text>
                 </Pressable>
-                <Text style={styles.title}>Quêtes & Tâches</Text>
+                <Text style={styles.title}>Mes Quêtes</Text>
               </View>
 
               <View style={styles.formCard}>

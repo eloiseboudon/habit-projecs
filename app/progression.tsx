@@ -1,5 +1,7 @@
+import { useRouter } from "expo-router";
 import {
   FlatList,
+  Pressable,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -34,6 +36,9 @@ const BADGES = [
 ];
 
 export default function ProgressionScreen() {
+  const router = useRouter();
+
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
@@ -41,26 +46,15 @@ export default function ProgressionScreen() {
           contentContainerStyle={styles.content}
           ListHeaderComponent={
             <>
+
               <View style={styles.header}>
+                <Pressable onPress={() => router.push("/")}>
+                  <Text style={styles.backLink}>← Accueil</Text>
+                </Pressable>
                 <Text style={styles.title}>Progression</Text>
                 <Text style={styles.subtitle}>
                   Suis ton évolution et découvre les récompenses débloquées.
                 </Text>
-              </View>
-
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Historique des actions</Text>
-                {HISTORY.map((day) => (
-                  <View key={day.id} style={styles.historySection}>
-                    <Text style={styles.historyDate}>{day.date}</Text>
-                    {day.items.map((item, index) => (
-                      <View key={index} style={styles.historyItem}>
-                        <Text style={styles.historyLabel}>{item.label}</Text>
-                        <Text style={styles.historyXp}>+{item.xp} XP</Text>
-                      </View>
-                    ))}
-                  </View>
-                ))}
               </View>
 
               <View style={styles.card}>
@@ -91,6 +85,22 @@ export default function ProgressionScreen() {
                 </View>
               </View>
 
+
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Historique des actions</Text>
+                {HISTORY.map((day) => (
+                  <View key={day.id} style={styles.historySection}>
+                    <Text style={styles.historyDate}>{day.date}</Text>
+                    {day.items.map((item, index) => (
+                      <View key={index} style={styles.historyItem}>
+                        <Text style={styles.historyLabel}>{item.label}</Text>
+                        <Text style={styles.historyXp}>+{item.xp} XP</Text>
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </View>
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Badges débloqués</Text>
                 <View style={styles.badgeGrid}>
@@ -135,6 +145,11 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 28,
     fontWeight: "700",
+  },
+  backLink: {
+    color: "#58a6ff",
+    fontSize: 16,
+    marginBottom: 12,
   },
   subtitle: {
     color: "#8b949e",

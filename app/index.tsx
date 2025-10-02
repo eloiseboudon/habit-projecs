@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import BottomNav from "../components/BottomNav";
 
 const STAT_BARS = [
@@ -41,10 +42,14 @@ export default function Index() {
           <View style={styles.statsContainer}>
             {STAT_BARS.map((stat) => (
               <View key={stat.label} style={styles.statRow}>
-                <Text style={styles.statLabel}>{stat.icon} {stat.label}</Text>
-                <Text style={styles.statValue}>
-                  {Math.round(stat.value * 100)}%
-                </Text>
+                <View style={styles.statHeader}>
+                  <Text style={styles.statLabel}>
+                    {stat.icon} {stat.label}
+                  </Text>
+                  <Text style={styles.statValue}>
+                    {Math.round(stat.value * 100)}%
+                  </Text>
+                </View>
                 <View style={styles.progressBarBackground}>
                   <View
                     style={[
@@ -63,23 +68,21 @@ export default function Index() {
 
           <View style={styles.actionButtons}>
             <TouchableOpacity
-              style={[styles.ctaButton, styles.primaryButton]}
+              style={[styles.ctaButton, styles.questsButton]}
               onPress={() => router.push("/quests")}
+              activeOpacity={0.85}
             >
+              <Feather name="target" size={28} color="#ffffff" />
               <Text style={styles.ctaLabel}>Mes Quêtes</Text>
-              <Text style={styles.ctaDescription}>
-                Consulte tes priorités et ajoute de nouvelles missions quotidiennes.
-              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.ctaButton, styles.secondaryButton]}
+              style={[styles.ctaButton, styles.progressButton]}
               onPress={() => router.push("/progression")}
+              activeOpacity={0.85}
             >
+              <Feather name="trending-up" size={28} color="#ffffff" />
               <Text style={styles.ctaLabel}>Progression</Text>
-              <Text style={styles.ctaDescription}>
-                Analyse ton historique et célèbre les badges débloqués.
-              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -153,6 +156,11 @@ const styles = StyleSheet.create({
     borderColor: "#30363d",
     gap: 10,
   },
+  statHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   statLabel: {
     color: "#c9d1d9",
     fontSize: 16,
@@ -175,30 +183,35 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   actionButtons: {
+    flexDirection: "row",
     gap: 16,
   },
   ctaButton: {
-    padding: 20,
+    flex: 1,
+    paddingVertical: 24,
     borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
     borderWidth: 1,
+    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 20,
+    elevation: 6,
   },
-  primaryButton: {
-    backgroundColor: "#1f6feb",
-    borderColor: "#58a6ff",
+  questsButton: {
+    backgroundColor: "#1d4ed8",
+    borderColor: "#3b82f6",
+    shadowColor: "#2563eb",
   },
-  secondaryButton: {
-    backgroundColor: "#161b22",
-    borderColor: "#30363d",
+  progressButton: {
+    backgroundColor: "#7c3aed",
+    borderColor: "#a855f7",
+    shadowColor: "#8b5cf6",
   },
   ctaLabel: {
     color: "white",
     fontSize: 18,
     fontWeight: "700",
-    marginBottom: 8,
-  },
-  ctaDescription: {
-    color: "#c9d1d9",
-    fontSize: 14,
-    lineHeight: 20,
   },
 });

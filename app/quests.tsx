@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -9,55 +9,62 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import BottomNav from "../components/BottomNav";
+import {
+  CATEGORIES,
+  CATEGORY_OPTIONS,
+  type CategoryKey,
+} from "../constants/categories";
 
 type Task = {
   id: string;
   title: string;
-  category: string;
+  category: CategoryKey;
   xp: number;
   completed: boolean;
 };
 
-const FAVORITE_TASKS: Task[] = [
+const INITIAL_TASKS: Task[] = [
   {
     id: "1",
     title: "Hydratation du matin",
-    category: "Santé",
+    category: "health",
     xp: 15,
     completed: false,
   },
   {
     id: "2",
-    title: "Revue budget",
-    category: "Finances",
-    xp: 25,
+    title: "Méditation express",
+    category: "wellness",
+    xp: 20,
     completed: false,
   },
   {
     id: "3",
-    title: "Point équipe",
-    category: "Travail",
-    xp: 30,
+    title: "Revue budget",
+    category: "finance",
+    xp: 25,
+    completed: true,
+  },
+  {
+    id: "4",
+    title: "Lecture pro",
+    category: "work",
+    xp: 18,
     completed: false,
   },
 ];
 
-const CATEGORIES = ["Santé", "Finances", "Travail", "Relations", "Bien-être"];
-
 export default function QuestsScreen() {
   const router = useRouter();
-  const [tasks, setTasks] = useState(FAVORITE_TASKS);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(
-    CATEGORIES[0]
+  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [newTaskCategory, setNewTaskCategory] = useState<CategoryKey>(
+    CATEGORY_OPTIONS[0]
   );
-  const [taskTitle, setTaskTitle] = useState("");
-  const [xp, setXp] = useState(20);
-
-  const totalXp = useMemo(
-    () => tasks.reduce((acc, task) => acc + (task.completed ? task.xp : 0), 0),
-    [tasks]
-  );
+  const [newTaskText, setNewTaskText] = useState("");
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
 
   const toggleTask = (id: string) => {
     setTasks((prev) =>
@@ -67,39 +74,35 @@ export default function QuestsScreen() {
     );
   };
 
+  const handleCloseForm = () => {
+    setShowAddTask(false);
+    setCategoryPickerOpen(false);
+    setNewTaskText("");
+  };
+
   const addTask = () => {
-    if (!taskTitle.trim() || !selectedCategory) {
+    if (!newTaskText.trim()) {
       return;
     }
 
     setTasks((prev) => [
       {
         id: Date.now().toString(),
-        title: taskTitle.trim(),
-        category: selectedCategory,
-        xp,
+        title: newTaskText.trim(),
+        category: newTaskCategory,
+        xp: 20,
         completed: false,
       },
       ...prev,
     ]);
 
-    setTaskTitle("");
-    setXp(20);
+    handleCloseForm();
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
         <FlatList
-          contentContainerStyle={styles.content}
-          ListHeaderComponent={
-            <View style={styles.header}>
-              <Pressable onPress={() => router.push("/")}>
-                <Text style={styles.backLink}>← Accueil</Text>
-              </Pressable>
-              <Text style={styles.title}>Mes Quêtes</Text>
-            </View>
-          }
           data={tasks}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
@@ -107,90 +110,125 @@ export default function QuestsScreen() {
               style={[styles.taskCard, item.completed && styles.taskCardCompleted]}
               onPress={() => toggleTask(item.id)}
             >
-              <View style={styles.checkbox}>
-                <View style={[styles.checkboxInner, item.completed && styles.checkboxChecked]} />
-              </View>
+              <Pressable
+                onPress={(event) => {
+                  event.stopPropagation();
+                  toggleTask(item.id);
+                }}
+                hitSlop={10}
+                style={[
+                  styles.checkboxButton,
+                  item.completed
+                    ? styles.checkboxButtonCompleted
+                    : styles.checkboxButtonDefault,
+                ]}
+              >
+                {item.completed && (
+                  <Feather name="check" size={16} color="#0f172a" />
+                )}
+              </Pressable>
               <View style={styles.taskContent}>
-                <Text style={styles.taskTitle}>{item.title}</Text>
-                <Text style={styles.taskMeta}>
-                  {item.category} · {item.xp} XP
+                <Text
+                  style={[styles.taskTitle, item.completed && styles.taskTitleCompleted]}
+                >
+                  {item.title}
                 </Text>
+                <View style={styles.taskMetaRow}>
+                  <Text style={styles.taskCategory}>
+                    {CATEGORIES[item.category].icon} {CATEGORIES[item.category].label}
+                  </Text>
+                  <Text style={styles.taskXp}>+{item.xp} XP</Text>
+                </View>
               </View>
-              <Text style={styles.taskAction}>{item.completed ? "Validée" : "Valider"}</Text>
             </Pressable>
           )}
-          ListFooterComponent={
-            <View style={styles.footerContent}>
-              <View style={styles.formCard}>
-                <Text style={styles.sectionTitle}>Ajouter une tâche</Text>
-                <Text style={styles.sectionDescription}>
-                  Choisis une catégorie, écris ta mission et gagne de l’XP en un
-                  clin d’œil.
-                </Text>
-
-                <View style={styles.categoryRow}>
-                  {CATEGORIES.map((category) => (
-                    <Pressable
-                      key={category}
-                      style={[
-                        styles.categoryChip,
-                        selectedCategory === category && styles.categoryChipActive,
-                      ]}
-                      onPress={() => setSelectedCategory(category)}
-                    >
-                      <Text
-                        style={[
-                          styles.categoryLabel,
-                          selectedCategory === category && styles.categoryLabelActive,
-                        ]}
-                      >
-                        {category}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-
-                <TextInput
-                  value={taskTitle}
-                  onChangeText={setTaskTitle}
-                  placeholder="Saisie rapide..."
-                  placeholderTextColor="#6e7681"
-                  style={styles.input}
-                />
-
-                <View style={styles.xpRow}>
-                  <Text style={styles.xpLabel}>Gain XP</Text>
-                  <View style={styles.xpAdjusters}>
-                    {[10, 20, 40].map((value) => (
-                      <Pressable
-                        key={value}
-                        style={[styles.xpButton, xp === value && styles.xpButtonActive]}
-                        onPress={() => setXp(value)}
-                      >
-                        <Text
-                          style={[
-                            styles.xpButtonLabel,
-                            xp === value && styles.xpButtonLabelActive,
-                          ]}
-                        >
-                          +{value}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                  <Pressable style={styles.addTaskButton} onPress={addTask}>
-                    <Text style={styles.addTaskLabel}>+ Ajouter</Text>
-                  </Pressable>
-                </View>
-              </View>
-
-              <View style={styles.footerSummary}>
-                <Text style={styles.footerText}>
-                  XP validée aujourd’hui : <Text style={styles.footerHighlight}>{totalXp} XP</Text>
-                </Text>
-              </View>
+          ListHeaderComponent={
+            <View style={styles.header}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push("/")}
+                style={styles.backButton}
+              >
+                <Feather name="chevron-left" size={22} color="#e5e7eb" />
+              </Pressable>
+              <Text style={styles.title}>Mes Quêtes du jour</Text>
             </View>
           }
+          ListFooterComponent={
+            <View style={styles.footerContent}>
+              {!showAddTask ? (
+                <Pressable
+                  style={styles.addQuickButton}
+                  onPress={() => setShowAddTask(true)}
+                >
+                  <Feather name="plus" size={18} color="#f9fafb" />
+                  <Text style={styles.addQuickLabel}>Ajouter une tâche</Text>
+                </Pressable>
+              ) : (
+                <View style={styles.formCard}>
+                  <Text style={styles.formTitle}>Nouvelle tâche</Text>
+
+                  <View style={styles.fieldBlock}>
+                    <Text style={styles.fieldLabel}>Catégorie</Text>
+                    <Pressable
+                      style={styles.selectTrigger}
+                      onPress={() => setCategoryPickerOpen((prev) => !prev)}
+                    >
+                      <Text style={styles.selectTriggerText}>
+                        {CATEGORIES[newTaskCategory].icon} {" "}
+                        {CATEGORIES[newTaskCategory].label}
+                      </Text>
+                      <Feather
+                        name={categoryPickerOpen ? "chevron-up" : "chevron-down"}
+                        size={16}
+                        color="#cbd5f5"
+                      />
+                    </Pressable>
+                    {categoryPickerOpen && (
+                      <View style={styles.selectOptions}>
+                        {CATEGORY_OPTIONS.map((category) => (
+                          <Pressable
+                            key={category}
+                            style={styles.selectOption}
+                            onPress={() => {
+                              setNewTaskCategory(category);
+                              setCategoryPickerOpen(false);
+                            }}
+                          >
+                            <Text style={styles.selectOptionText}>
+                              {CATEGORIES[category].icon} {CATEGORIES[category].label}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.fieldBlock}>
+                    <Text style={styles.fieldLabel}>Action</Text>
+                    <TextInput
+                      value={newTaskText}
+                      onChangeText={setNewTaskText}
+                      placeholder="Ex: Méditer 10 minutes"
+                      placeholderTextColor="#64748b"
+                      style={styles.input}
+                    />
+                  </View>
+
+                  <View style={styles.formActions}>
+                    <Pressable style={styles.cancelButton} onPress={handleCloseForm}>
+                      <Text style={styles.cancelLabel}>Annuler</Text>
+                    </Pressable>
+                    <Pressable style={styles.submitButton} onPress={addTask}>
+                      <Text style={styles.submitLabel}>Valider</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
+            </View>
+          }
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
         />
         <BottomNav />
       </View>
@@ -201,166 +239,68 @@ export default function QuestsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#0d1117",
+    backgroundColor: "#0f172a",
   },
   screen: {
     flex: 1,
-    backgroundColor: "#0d1117",
+    backgroundColor: "#0f172a",
+  },
+  content: {
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 140,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#21262d",
-    backgroundColor: "#0d1117",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    marginBottom: 28,
   },
-  backLink: {
-    color: "#58a6ff",
-    fontSize: 16,
-    marginBottom: 12,
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(15, 23, 42, 0.8)",
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.2)",
   },
   title: {
     color: "white",
-    fontSize: 24,
-    fontWeight: "700",
-  },
-  content: {
-    padding: 20,
-    gap: 16,
-    paddingBottom: 120,
-  },
-  formCard: {
-    backgroundColor: "#161b22",
-    padding: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#30363d",
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  sectionDescription: {
-    color: "#8b949e",
-    fontSize: 14,
-    marginTop: 6,
-    lineHeight: 20,
-  },
-  categoryRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 16,
-  },
-  categoryChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: "#21262d",
-  },
-  categoryChipActive: {
-    backgroundColor: "#1f6feb",
-  },
-  categoryLabel: {
-    color: "#8b949e",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  categoryLabelActive: {
-    color: "white",
-  },
-  input: {
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 14,
-    backgroundColor: "#0d1117",
-    borderWidth: 1,
-    borderColor: "#30363d",
-    color: "white",
-    fontSize: 16,
-  },
-  xpRow: {
-    marginTop: 20,
-    gap: 12,
-  },
-  xpLabel: {
-    color: "#c9d1d9",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  xpAdjusters: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  xpButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#30363d",
-    backgroundColor: "#161b22",
-  },
-  xpButtonActive: {
-    backgroundColor: "#2ea043",
-    borderColor: "#3fb950",
-  },
-  xpButtonLabel: {
-    color: "#8b949e",
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  xpButtonLabelActive: {
-    color: "white",
-  },
-  addTaskButton: {
-    alignSelf: "flex-start",
-    marginTop: 12,
-    backgroundColor: "#1f6feb",
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  addTaskLabel: {
-    color: "white",
-    fontSize: 15,
+    fontSize: 26,
     fontWeight: "700",
   },
   taskCard: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    backgroundColor: "#161b22",
-    padding: 16,
-    borderRadius: 16,
+    alignItems: "flex-start",
+    gap: 12,
+    backgroundColor: "rgba(30, 41, 59, 0.7)",
+    padding: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#30363d",
+    borderColor: "rgba(75, 85, 99, 0.45)",
     marginBottom: 12,
   },
   taskCardCompleted: {
-    borderColor: "#2ea043",
-    backgroundColor: "#182c1f",
+    borderColor: "rgba(34, 197, 94, 0.55)",
+    backgroundColor: "rgba(6, 95, 70, 0.2)",
   },
-  checkbox: {
+  checkboxButton: {
     width: 28,
     height: 28,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: "#58a6ff",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0d1117",
   },
-  checkboxInner: {
-    width: 16,
-    height: 16,
-    borderRadius: 4,
-    backgroundColor: "transparent",
+  checkboxButtonDefault: {
+    backgroundColor: "rgba(15, 23, 42, 0.9)",
+    borderColor: "rgba(75, 85, 99, 0.6)",
   },
-  checkboxChecked: {
-    backgroundColor: "#58a6ff",
+  checkboxButtonCompleted: {
+    backgroundColor: "#22c55e",
+    borderColor: "#22c55e",
   },
   taskContent: {
     flex: 1,
@@ -371,32 +311,137 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  taskMeta: {
-    color: "#8b949e",
-    fontSize: 13,
+  taskTitleCompleted: {
+    textDecorationLine: "line-through",
+    color: "#6b7280",
   },
-  taskAction: {
-    color: "#58a6ff",
+  taskMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  taskCategory: {
+    fontSize: 12,
+    color: "#94a3b8",
+  },
+  taskXp: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#c084fc",
+  },
+  footerContent: {
+    marginTop: 16,
+  },
+  addQuickButton: {
+    height: 54,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "#7c3aed",
+    borderWidth: 1,
+    borderColor: "rgba(147, 51, 234, 0.4)",
+  },
+  addQuickLabel: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  formCard: {
+    backgroundColor: "rgba(30, 41, 59, 0.7)",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(75, 85, 99, 0.45)",
+    padding: 20,
+    gap: 20,
+  },
+  formTitle: {
+    color: "white",
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  fieldBlock: {
+    gap: 10,
+  },
+  fieldLabel: {
+    color: "#cbd5f5",
+    fontSize: 13,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    fontWeight: "700",
+  },
+  selectTrigger: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: "rgba(15, 23, 42, 0.9)",
+    borderWidth: 1,
+    borderColor: "rgba(71, 85, 105, 0.6)",
+  },
+  selectTriggerText: {
+    color: "#e2e8f0",
     fontSize: 14,
     fontWeight: "600",
   },
-  footerSummary: {
-    marginTop: 12,
-    padding: 16,
-    borderRadius: 16,
+  selectOptions: {
+    marginTop: 8,
+    borderRadius: 14,
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#30363d",
-    backgroundColor: "#161b22",
+    borderColor: "rgba(71, 85, 105, 0.6)",
+    backgroundColor: "rgba(15, 23, 42, 0.95)",
   },
-  footerContent: {
-    gap: 20,
+  selectOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  footerText: {
-    color: "#8b949e",
+  selectOptionText: {
+    color: "#e2e8f0",
+    fontSize: 14,
+  },
+  input: {
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: "rgba(15, 23, 42, 0.9)",
+    borderWidth: 1,
+    borderColor: "rgba(71, 85, 105, 0.6)",
+    color: "white",
     fontSize: 15,
   },
-  footerHighlight: {
-    color: "#2ea043",
+  formActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    backgroundColor: "rgba(51, 65, 85, 0.8)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelLabel: {
+    color: "#e2e8f0",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  submitButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    backgroundColor: "#7c3aed",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  submitLabel: {
+    color: "white",
+    fontSize: 15,
     fontWeight: "700",
   },
 });

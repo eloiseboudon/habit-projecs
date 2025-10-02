@@ -27,7 +27,7 @@ export default function QuestsScreen() {
     state: authState,
   } = useAuth();
   const {
-    state: { status, tasks, errorMessage },
+    state: { status, tasks, errorMessage, dashboard },
     refresh,
     isRefreshing,
     completeTask,
@@ -52,6 +52,56 @@ export default function QuestsScreen() {
   }, [authState.status, navigationState?.key, router]);
 
   const questItems = useMemo(() => tasks?.tasks ?? [], [tasks]);
+  const domainKeyOverrides = useMemo(() => {
+    const overrides = new Map<CategoryKey, string>();
+
+    const normalizeText = (value: string | null | undefined) =>
+      value
+        ? value
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim()
+        : "";
+
+    const candidates: { key: string; name: string }[] = [];
+
+    if (dashboard) {
+      for (const stat of dashboard.domain_stats) {
+        candidates.push({ key: stat.domain_key, name: stat.domain_name });
+      }
+    }
+
+    for (const task of questItems) {
+      candidates.push({ key: task.domain_key, name: task.domain_name });
+    }
+
+    if (candidates.length === 0) {
+      return overrides;
+    }
+
+    for (const categoryKey of CATEGORY_OPTIONS) {
+      const category = CATEGORIES[categoryKey];
+      const normalizedKey = normalizeText(categoryKey);
+      const normalizedLabel = normalizeText(category.label);
+
+      const match = candidates.find((candidate) => {
+        if (normalizeText(candidate.key) === normalizedKey) {
+          return true;
+        }
+        if (candidate.name) {
+          return normalizeText(candidate.name) === normalizedLabel;
+        }
+        return false;
+      });
+
+      if (match) {
+        overrides.set(categoryKey, match.key);
+      }
+    }
+
+    return overrides;
+  }, [dashboard, questItems]);
   const isInitialLoading =
     (status === "loading" || status === "idle") && questItems.length === 0;
 
@@ -94,9 +144,10 @@ export default function QuestsScreen() {
 
     try {
       setIsSubmitting(true);
+      const domainKeyToSend = domainKeyOverrides.get(selectedCategory) ?? selectedCategory;
       await createTask({
         title,
-        domain_key: selectedCategory,
+        domain_key: domainKeyToSend,
         xp: xpValue,
       });
       resetForm();

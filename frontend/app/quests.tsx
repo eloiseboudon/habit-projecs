@@ -1,3 +1,4 @@
+import { Feather } from "@expo/vector-icons";
 import { useRootNavigationState, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -10,13 +11,12 @@ import {
   Text,
   View,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
 
+import { SafeAreaView } from "react-native-safe-area-context";
 import BottomNav from "../components/BottomNav";
+import { CATEGORIES, type CategoryKey } from "../constants/categories";
 import { useAuth } from "../context/AuthContext";
 import { useHabitData } from "../context/HabitDataContext";
-import { CATEGORIES, type CategoryKey } from "../constants/categories";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function QuestsScreen() {
   const router = useRouter();

@@ -127,6 +127,14 @@ export async function registerUser(payload: RegisterRequest): Promise<AuthRespon
     headers: buildJsonHeaders(true),
     body: JSON.stringify(payload),
   });
+  if (response.status === 404) {
+    const legacyResponse = await fetch(`${API_URL}/register`, {
+      method: "POST",
+      headers: buildJsonHeaders(true),
+      body: JSON.stringify(payload),
+    });
+    return handleResponse<AuthResponse>(legacyResponse);
+  }
   return handleResponse<AuthResponse>(response);
 }
 

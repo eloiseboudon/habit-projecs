@@ -6,6 +6,10 @@ import type {
   RegisterRequest,
   TaskListItem,
   TaskListResponse,
+  UpdateUserDomainSettingsRequest,
+  UpdateUserProfileRequest,
+  UserDomainSetting,
+  UserProfile,
   UserSummary,
 } from "../types/api";
 
@@ -192,4 +196,42 @@ export async function completeTaskLog(
     const message = await extractErrorMessage(response);
     throw new Error(message || "Impossible d'enregistrer la complétion de la tâche");
   }
+}
+
+export async function fetchDomainSettings(userId: string): Promise<UserDomainSetting[]> {
+  const response = await fetch(`${API_URL}/users/${userId}/domain-settings`, {
+    headers: buildJsonHeaders(),
+  });
+  return handleResponse<UserDomainSetting[]>(response);
+}
+
+export async function updateDomainSettings(
+  userId: string,
+  payload: UpdateUserDomainSettingsRequest,
+): Promise<UserDomainSetting[]> {
+  const response = await fetch(`${API_URL}/users/${userId}/domain-settings`, {
+    method: "PUT",
+    headers: buildJsonHeaders(true),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<UserDomainSetting[]>(response);
+}
+
+export async function fetchUserProfile(userId: string): Promise<UserProfile> {
+  const response = await fetch(`${API_URL}/users/${userId}/profile`, {
+    headers: buildJsonHeaders(),
+  });
+  return handleResponse<UserProfile>(response);
+}
+
+export async function updateUserProfile(
+  userId: string,
+  payload: UpdateUserProfileRequest,
+): Promise<UserProfile> {
+  const response = await fetch(`${API_URL}/users/${userId}/profile`, {
+    method: "PUT",
+    headers: buildJsonHeaders(true),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<UserProfile>(response);
 }

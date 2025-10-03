@@ -23,6 +23,7 @@ from ..models import (
     User,
     UserDomainSetting,
     UserLevel,
+    UserSettings,
     UserTask,
 )
 from ..schemas import (
@@ -34,6 +35,10 @@ from ..schemas import (
     TaskCreate,
     TaskListItem,
     TaskListResponse,
+    UserDomainSettingItem,
+    UserDomainSettingUpdateRequest,
+    UserProfile,
+    UserProfileUpdateRequest,
     UserSummary,
     WeeklyStat,
 )
@@ -84,6 +89,166 @@ def resolve_user(session: Session, user_id: UUID) -> User:
     return user
 
 
+def ensure_user_settings(session: Session, user: User) -> UserSettings:
+    settings = user.user_settings
+    if settings:
+        return settings
+
+    settings = UserSettings(user_id=user.id)
+    session.add(settings)
+    session.commit()
+    session.refresh(settings)
+    return settings
+
+
+def serialize_domain_settings(session: Session, user_id: UUID) -> list[UserDomainSettingItem]:
+    domain_stmt = select(Domain).order_by(Domain.order_index)
+    domains = session.scalars(domain_stmt).all()
+
+    settings_stmt = select(UserDomainSetting).where(UserDomainSetting.user_id == user_id)
+    settings_map = {setting.domain_id: setting for setting in session.scalars(settings_stmt)}
+
+    serialized: list[UserDomainSettingItem] = []
+    for domain in domains:
+        setting = settings_map.get(domain.id)
+        serialized.append(
+            UserDomainSettingItem(
+                domain_id=domain.id,
+                domain_key=domain.key,
+                domain_name=domain.name,
+                icon=domain.icon,
+                weekly_target_points=setting.weekly_target_points if setting else 100,
+                is_enabled=setting.is_enabled if setting else False,
+            )
+        )
+
+    return serialized
+
+
+def serialize_user_profile(user: User, settings: UserSettings) -> UserProfile:
+    return UserProfile(
+        display_name=user.display_name,
+        email=user.email,
+        timezone=user.timezone,
+        language=settings.language,
+        notifications_enabled=settings.notifications_enabled,
+        first_day_of_week=settings.first_day_of_week,
+    )
+
+
+@router.get("/{user_id}/domain-settings", response_model=list[UserDomainSettingItem])
+def get_domain_settings(
+    user_id: UUID, session: Session = Depends(get_db_session)
+) -> list[UserDomainSettingItem]:
+    _ = resolve_user(session, user_id)
+    return serialize_domain_settings(session, user_id)
+
+
+@router.put("/{user_id}/domain-settings", response_model=list[UserDomainSettingItem])
+def update_domain_settings(
+    user_id: UUID,
+    payload: UserDomainSettingUpdateRequest,
+    session: Session = Depends(get_db_session),
+) -> list[UserDomainSettingItem]:
+    user = resolve_user(session, user_id)
+
+    if not payload.settings:
+        return serialize_domain_settings(session, user.id)
+
+    domain_ids = {item.domain_id for item in payload.settings}
+    if not domain_ids:
+        return serialize_domain_settings(session, user.id)
+
+    domains_stmt = select(Domain).where(Domain.id.in_(domain_ids))
+    domains = session.scalars(domains_stmt).all()
+    found_domain_ids = {domain.id for domain in domains}
+    missing = domain_ids - found_domain_ids
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Certains domaines sont inconnus pour cet utilisateur.",
+        )
+
+    existing_stmt = (
+        select(UserDomainSetting)
+        .where(UserDomainSetting.user_id == user.id)
+        .where(UserDomainSetting.domain_id.in_(domain_ids))
+    )
+    existing_settings = {
+        setting.domain_id: setting for setting in session.scalars(existing_stmt)
+    }
+
+    for item in payload.settings:
+        setting = existing_settings.get(item.domain_id)
+        if setting:
+            setting.weekly_target_points = item.weekly_target_points
+            setting.is_enabled = item.is_enabled
+        else:
+            session.add(
+                UserDomainSetting(
+                    user_id=user.id,
+                    domain_id=item.domain_id,
+                    weekly_target_points=item.weekly_target_points,
+                    is_enabled=item.is_enabled,
+                )
+            )
+
+    session.commit()
+
+    return serialize_domain_settings(session, user.id)
+
+
+@router.get("/{user_id}/profile", response_model=UserProfile)
+def get_user_profile(user_id: UUID, session: Session = Depends(get_db_session)) -> UserProfile:
+    user = resolve_user(session, user_id)
+    settings = ensure_user_settings(session, user)
+    return serialize_user_profile(user, settings)
+
+
+@router.put("/{user_id}/profile", response_model=UserProfile)
+def update_user_profile(
+    user_id: UUID,
+    payload: UserProfileUpdateRequest,
+    session: Session = Depends(get_db_session),
+) -> UserProfile:
+    user = resolve_user(session, user_id)
+
+    display_name = payload.display_name.strip()
+    if not display_name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le nom d'affichage ne peut pas être vide.",
+        )
+
+    email = payload.email.strip().lower()
+    existing_user = session.scalar(select(User).where(User.email == email))
+    if existing_user and existing_user.id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cette adresse e-mail est déjà utilisée par un autre compte.",
+        )
+
+    timezone = payload.timezone.strip()
+    if not timezone:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le fuseau horaire est obligatoire.",
+        )
+
+    user.display_name = display_name
+    user.email = email
+    user.timezone = timezone
+
+    settings = ensure_user_settings(session, user)
+    settings.language = payload.language.strip() or settings.language
+    settings.notifications_enabled = payload.notifications_enabled
+    settings.first_day_of_week = payload.first_day_of_week
+
+    session.commit()
+    session.refresh(user)
+    session.refresh(settings)
+
+    return serialize_user_profile(user, settings)
 @router.get("", response_model=list[UserSummary])
 def list_users(session: Session = Depends(get_db_session)) -> list[UserSummary]:
     stmt = select(User).order_by(User.display_name)

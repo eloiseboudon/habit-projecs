@@ -89,3 +89,31 @@ export type ProgressionResponse = {
   weekly_stats: WeeklyStat[];
   badges: BadgeItem[];
 };
+
+export type UserDomainSetting = {
+  domain_id: number;
+  domain_key: string;
+  domain_name: string;
+  icon: string | null;
+  weekly_target_points: number;
+  is_enabled: boolean;
+};
+
+export type UpdateUserDomainSettingsRequest = {
+  settings: {
+    domain_id: number;
+    weekly_target_points: number;
+    is_enabled: boolean;
+  }[];
+};
+
+export type UserProfile = {
+  display_name: string;
+  email: string;
+  timezone: string;
+  language: string;
+  notifications_enabled: boolean;
+  first_day_of_week: number;
+};
+
+export type UpdateUserProfileRequest = UserProfile;

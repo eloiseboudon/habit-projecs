@@ -108,6 +108,20 @@ def get_dashboard(user_id: UUID, session: Session = Depends(get_db_session)) -> 
     today = datetime.now(ZoneInfo(get_settings().timezone)).date()
     current_week = monday_start(today)
 
+    snapshots_stmt = (
+        select(ProgressSnapshot, Domain)
+        .join(Domain, ProgressSnapshot.domain_id == Domain.id)
+        .where(
+            ProgressSnapshot.user_id == user_id,
+            ProgressSnapshot.period == SnapshotPeriod.WEEK,
+            ProgressSnapshot.period_start_date == current_week,
+        )
+    )
+
+    snapshot_by_domain: dict[int, tuple[ProgressSnapshot, Domain]] = {}
+    for snapshot, domain in session.execute(snapshots_stmt):
+        snapshot_by_domain[domain.id] = (snapshot, domain)
+
     settings_stmt = (
         select(UserDomainSetting, Domain, ProgressSnapshot)
         .join(Domain, UserDomainSetting.domain_id == Domain.id)
@@ -124,26 +138,52 @@ def get_dashboard(user_id: UUID, session: Session = Depends(get_db_session)) -> 
         .order_by(Domain.order_index)
     )
 
-    domain_stats: list[DashboardDomainStat] = []
+    ordered_stats: list[tuple[int, DashboardDomainStat]] = []
     for domain_setting, domain, snapshot in session.execute(settings_stmt):
-        weekly_points = snapshot.points_total if snapshot else 0
-        weekly_xp = snapshot.xp_total if snapshot else 0
+        extra_snapshot = snapshot_by_domain.pop(domain.id, None)
+        mapped_snapshot = snapshot or (extra_snapshot[0] if extra_snapshot else None)
+
+        weekly_points = mapped_snapshot.points_total if mapped_snapshot else 0
+        weekly_xp = mapped_snapshot.xp_total if mapped_snapshot else 0
         weekly_target = domain_setting.weekly_target_points or 0
         progress = 0.0
         if weekly_target > 0:
             progress = min(weekly_points / weekly_target, 1.0)
-        domain_stats.append(
-            DashboardDomainStat(
-                domain_id=domain.id,
-                domain_key=domain.key,
-                domain_name=domain.name,
-                icon=domain.icon,
-                weekly_points=weekly_points,
-                weekly_target=weekly_target,
-                weekly_xp=weekly_xp,
-                progress_ratio=progress,
+        ordered_stats.append(
+            (
+                domain.order_index,
+                DashboardDomainStat(
+                    domain_id=domain.id,
+                    domain_key=domain.key,
+                    domain_name=domain.name,
+                    icon=domain.icon,
+                    weekly_points=weekly_points,
+                    weekly_target=weekly_target,
+                    weekly_xp=weekly_xp,
+                    progress_ratio=progress,
+                ),
             )
         )
+
+    for _, (snapshot, domain) in snapshot_by_domain.items():
+        ordered_stats.append(
+            (
+                domain.order_index,
+                DashboardDomainStat(
+                    domain_id=domain.id,
+                    domain_key=domain.key,
+                    domain_name=domain.name,
+                    icon=domain.icon,
+                    weekly_points=snapshot.points_total,
+                    weekly_target=0,
+                    weekly_xp=snapshot.xp_total,
+                    progress_ratio=0.0,
+                ),
+            )
+        )
+
+    ordered_stats.sort(key=lambda item: item[0])
+    domain_stats = [stat for _, stat in ordered_stats]
 
     return DashboardResponse(
         user_id=user.id,

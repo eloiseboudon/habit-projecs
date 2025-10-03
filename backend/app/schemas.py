@@ -225,3 +225,35 @@ class ProgressionResponse(BaseModel):
     recent_history: list[HistoryItem]
     weekly_stats: list[WeeklyStat]
     badges: list[BadgeItem]
+
+
+class UserDomainSettingItem(BaseModel):
+    domain_id: int
+    domain_key: str
+    domain_name: str
+    icon: Optional[str]
+    weekly_target_points: int
+    is_enabled: bool
+
+
+class UserDomainSettingUpdate(BaseModel):
+    domain_id: int
+    weekly_target_points: int = Field(ge=0, le=100000)
+    is_enabled: bool
+
+
+class UserDomainSettingUpdateRequest(BaseModel):
+    settings: list[UserDomainSettingUpdate]
+
+
+class UserProfile(BaseModel):
+    display_name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    timezone: str = Field(min_length=1, max_length=64)
+    language: str = Field(min_length=2, max_length=10)
+    notifications_enabled: bool
+    first_day_of_week: int = Field(ge=0, le=6)
+
+
+class UserProfileUpdateRequest(UserProfile):
+    pass

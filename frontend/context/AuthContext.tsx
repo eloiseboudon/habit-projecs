@@ -17,6 +17,7 @@ type AuthContextValue = {
   register: (displayName: string, email: string, password: string) => Promise<AuthResponse>;
   logout: () => void;
   clearError: () => void;
+  updateUser: (user: UserSummary) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -58,6 +59,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState((previous) => ({ ...previous, errorMessage: undefined }));
   }, []);
 
+  const updateUser = useCallback((user: UserSummary) => {
+    setState((previous) => ({
+      ...previous,
+      user,
+      status: previous.status === "authenticated" ? "authenticated" : previous.status,
+    }));
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       state,
@@ -65,8 +74,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       register,
       logout,
       clearError,
+      updateUser,
     }),
-    [state, login, register, logout, clearError],
+    [state, login, register, logout, clearError, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

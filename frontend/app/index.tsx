@@ -162,16 +162,27 @@ export default function Index() {
         >
           <View style={styles.topBar}>
             <Text style={styles.screenHeading}>Tableau de bord</Text>
-            <TouchableOpacity
-              style={styles.logoutButton}
-              onPress={() => {
-                logout();
-                router.replace("/login");
-              }}
-            >
-              <Feather name="log-out" size={18} color="#f8fafc" />
-              <Text style={styles.logoutLabel}>Déconnexion</Text>
-            </TouchableOpacity>
+            <View style={styles.topActions}>
+              <TouchableOpacity
+                style={styles.settingsButton}
+                onPress={() => router.push("/settings")}
+                activeOpacity={0.85}
+              >
+                <Feather name="settings" size={18} color="#f8fafc" />
+                <Text style={styles.settingsLabel}>Paramètres</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.logoutButton}
+                onPress={() => {
+                  logout();
+                  router.replace("/login");
+                }}
+              >
+                <Feather name="log-out" size={18} color="#f8fafc" />
+                <Text style={styles.logoutLabel}>Déconnexion</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           {renderContent()}
         </ScrollView>
@@ -201,10 +212,31 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  topActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
   screenHeading: {
     color: "#f8fafc",
     fontSize: 22,
     fontWeight: "700",
+  },
+  settingsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#30363d",
+    backgroundColor: "#161b2233",
+  },
+  settingsLabel: {
+    color: "#f8fafc",
+    fontSize: 14,
+    fontWeight: "600",
   },
   logoutButton: {
     flexDirection: "row",

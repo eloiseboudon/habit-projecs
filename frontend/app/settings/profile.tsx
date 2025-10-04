@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRootNavigationState, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +16,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import BottomNav from "../../components/BottomNav";
+import ReadyPlayerMeAvatar from "../../components/ReadyPlayerMeAvatar";
+import ReadyPlayerMeCreatorModal from "../../components/ReadyPlayerMeCreatorModal";
 import { getAvatarAsset } from "../../constants/avatarAssets";
 import { AVATAR_OPTIONS } from "../../constants/avatarTypes";
 import { useAuth } from "../../context/AuthContext";
@@ -32,6 +34,7 @@ type ProfileFormState = {
   notificationsEnabled: boolean;
   firstDayOfWeek: string;
   avatarType: AvatarType;
+  avatarUrl: string | null;
 };
 
 const INITIAL_FORM: ProfileFormState = {
@@ -42,6 +45,7 @@ const INITIAL_FORM: ProfileFormState = {
   notificationsEnabled: true,
   firstDayOfWeek: "1",
   avatarType: "explorateur",
+  avatarUrl: null,
 };
 
 export default function ProfileScreen() {
@@ -58,7 +62,9 @@ export default function ProfileScreen() {
 
   const [form, setForm] = useState<ProfileFormState>(INITIAL_FORM);
   const [initialAvatarType, setInitialAvatarType] = useState<AvatarType | null>(null);
-  const [isEditingAvatar, setIsEditingAvatar] = useState(false);
+  const [initialAvatarUrl, setInitialAvatarUrl] = useState<string | null>(null);
+  const [isSelectingFallbackAvatar, setIsSelectingFallbackAvatar] = useState(false);
+  const [isAvatarCreatorVisible, setIsAvatarCreatorVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -90,9 +96,12 @@ export default function ProfileScreen() {
         notificationsEnabled: response.notifications_enabled,
         firstDayOfWeek: String(response.first_day_of_week ?? 1),
         avatarType: response.avatar_type,
+        avatarUrl: response.avatar_url ?? null,
       });
       setInitialAvatarType(response.avatar_type);
-      setIsEditingAvatar(false);
+      setInitialAvatarUrl(response.avatar_url ?? null);
+      setIsSelectingFallbackAvatar(false);
+      setIsAvatarCreatorVisible(false);
     } catch (error) {
       const message =
         error instanceof Error
@@ -144,6 +153,7 @@ export default function ProfileScreen() {
         notifications_enabled: form.notificationsEnabled,
         first_day_of_week: firstDay,
         avatar_type: form.avatarType,
+        avatar_url: form.avatarUrl,
       };
       const response = await updateUserProfile(user.id, payload);
       setForm({
@@ -154,9 +164,12 @@ export default function ProfileScreen() {
         notificationsEnabled: response.notifications_enabled,
         firstDayOfWeek: String(response.first_day_of_week ?? firstDay),
         avatarType: response.avatar_type,
+        avatarUrl: response.avatar_url ?? null,
       });
       setInitialAvatarType(response.avatar_type);
-      setIsEditingAvatar(false);
+      setInitialAvatarUrl(response.avatar_url ?? null);
+      setIsSelectingFallbackAvatar(false);
+      setIsAvatarCreatorVisible(false);
       if (authUser) {
         updateUser({ id: authUser.id, display_name: response.display_name });
       }
@@ -172,6 +185,56 @@ export default function ProfileScreen() {
       setIsSaving(false);
     }
   }, [authUser, form, refresh, updateUser, user]);
+
+  const handleAvatarExported = useCallback(
+    (rawUrl: string) => {
+      const trimmed = rawUrl.trim();
+      if (!trimmed) {
+        return;
+      }
+
+      try {
+        const parsed = new URL(trimmed);
+        const host = parsed.hostname.toLowerCase();
+        if (!host.endsWith("readyplayer.me")) {
+          Alert.alert(
+            "URL non reconnue",
+            "Le modèle reçu ne provient pas de Ready Player Me. Veuillez réessayer.",
+          );
+          return;
+        }
+        const normalized = parsed.toString();
+        setForm((previous) => ({ ...previous, avatarUrl: normalized }));
+        setIsAvatarCreatorVisible(false);
+        setIsSelectingFallbackAvatar(false);
+        Alert.alert(
+          "Avatar importé",
+          "N'oubliez pas d'enregistrer votre profil pour appliquer ce nouvel avatar.",
+        );
+      } catch (error) {
+        Alert.alert(
+          "Avatar invalide",
+          "Impossible de lire l'URL de l'avatar généré. Veuillez réessayer.",
+        );
+      }
+    },
+    [],
+  );
+
+  const handleResetAvatarChanges = useCallback(() => {
+    setForm((previous) => ({
+      ...previous,
+      avatarType: initialAvatarType ?? previous.avatarType,
+      avatarUrl: initialAvatarUrl,
+    }));
+    setIsSelectingFallbackAvatar(false);
+  }, [initialAvatarType, initialAvatarUrl]);
+
+  const hasAvatarChanges = useMemo(() => {
+    const typeChanged = initialAvatarType ? form.avatarType !== initialAvatarType : false;
+    const urlChanged = form.avatarUrl !== initialAvatarUrl;
+    return typeChanged || urlChanged;
+  }, [form.avatarType, form.avatarUrl, initialAvatarType, initialAvatarUrl]);
 
   const renderContent = () => {
     if (isLoading) {
@@ -197,62 +260,109 @@ export default function ProfileScreen() {
     return (
       <View style={styles.formContainer}>
         <Text style={styles.sectionTitle}>Avatar</Text>
-        {initialAvatarType && !isEditingAvatar ? (
-          <>
-            <Text style={styles.sectionSubtitle}>
-              Voici votre avatar actuel. Vous pourrez le modifier quand vous le souhaitez.
+        <Text style={styles.sectionSubtitle}>
+          Personnalisez un avatar 3D stylisé avec Ready Player Me. Un style 2D reste disponible en secours.
+        </Text>
+        <View style={styles.currentAvatarCard}>
+          {(() => {
+            const currentOption =
+              AVATAR_OPTIONS.find((option) => option.type === form.avatarType) ?? AVATAR_OPTIONS[0];
+            const preview = getAvatarAsset(form.avatarType, avatarPreviewLevel);
+            const accentColor = currentOption.colors[1] ?? "#38bdf8";
+            const previewBackground = currentOption.colors[0] ?? "#0f172a";
+            const initials = currentOption.label
+              .split(" ")
+              .map((part) => part[0] ?? "")
+              .join("")
+              .slice(0, 2)
+              .toUpperCase();
+            return (
+              <>
+                <View
+                  style={[
+                    styles.currentAvatarPreview,
+                    { borderColor: accentColor, backgroundColor: previewBackground },
+                  ]}
+                >
+                  {form.avatarUrl ? (
+                    <ReadyPlayerMeAvatar
+                      modelUrl={form.avatarUrl}
+                      backgroundColor={previewBackground}
+                      accentColor={accentColor}
+                      style={styles.currentAvatarCanvas}
+                    />
+                  ) : preview ? (
+                    <Image source={preview} style={styles.currentAvatarImage} contentFit="contain" />
+                  ) : (
+                    <Text style={styles.avatarOptionInitials}>{initials}</Text>
+                  )}
+                </View>
+                <View style={styles.currentAvatarTextGroup}>
+                  <Text style={styles.avatarOptionLabel}>{currentOption.label}</Text>
+                  <Text style={styles.avatarOptionTagline}>{currentOption.tagline}</Text>
+                  {form.avatarUrl ? (
+                    <Text style={styles.avatarOptionEvolution}>
+                      Avatar Ready Player Me chargé via CDN. Le visuel 2D sélectionné servira de secours.
+                    </Text>
+                  ) : (
+                    <Text style={styles.avatarOptionEvolution}>
+                      Évolution: {currentOption.evolution.join(" → ")}
+                    </Text>
+                  )}
+                </View>
+              </>
+            );
+          })()}
+        </View>
+        <View style={styles.avatarActions}>
+          <TouchableOpacity
+            style={styles.avatarActionButton}
+            onPress={() => setIsAvatarCreatorVisible(true)}
+            activeOpacity={0.85}
+          >
+            <Feather name="edit-3" size={18} color="#f8fafc" />
+            <Text style={styles.avatarActionButtonLabel}>
+              {form.avatarUrl ? "Modifier l’avatar 3D" : "Créer mon avatar 3D"}
             </Text>
-            <View style={styles.currentAvatarCard}>
-              {(() => {
-                const currentOption =
-                  AVATAR_OPTIONS.find((option) => option.type === form.avatarType) ?? AVATAR_OPTIONS[0];
-                const preview = getAvatarAsset(form.avatarType, avatarPreviewLevel);
-                const accentColor = currentOption.colors[1] ?? "#38bdf8";
-                const previewBackground = currentOption.colors[0] ?? "#0f172a";
-                return (
-                  <>
-                    <View
-                      style={[
-                        styles.currentAvatarPreview,
-                        { borderColor: accentColor, backgroundColor: previewBackground },
-                      ]}
-                    >
-                      {preview ? (
-                        <Image source={preview} style={styles.currentAvatarImage} contentFit="contain" />
-                      ) : (
-                        <Text style={styles.avatarOptionInitials}>
-                          {currentOption.label
-                            .split(" ")
-                            .map((part) => part[0] ?? "")
-                            .join("")
-                            .slice(0, 2)
-                            .toUpperCase()}
-                        </Text>
-                      )}
-                    </View>
-                    <View style={styles.currentAvatarTextGroup}>
-                      <Text style={styles.avatarOptionLabel}>{currentOption.label}</Text>
-                      <Text style={styles.avatarOptionTagline}>{currentOption.tagline}</Text>
-                      <Text style={styles.avatarOptionEvolution}>
-                        Évolution: {currentOption.evolution.join(" → ")}
-                      </Text>
-                    </View>
-                  </>
-                );
-              })()}
-            </View>
+          </TouchableOpacity>
+          {form.avatarUrl ? (
             <TouchableOpacity
-              style={styles.editAvatarButton}
-              onPress={() => setIsEditingAvatar(true)}
+              style={styles.avatarRemoveButton}
+              onPress={() => handleChange("avatarUrl", null)}
               activeOpacity={0.85}
             >
-              <Text style={styles.editAvatarButtonLabel}>Modifier l’avatar</Text>
+              <Feather name="trash-2" size={18} color="#f87171" />
+              <Text style={styles.avatarRemoveButtonLabel}>Supprimer l’avatar 3D</Text>
             </TouchableOpacity>
-          </>
-        ) : (
+          ) : null}
+        </View>
+        <Text style={styles.avatarInfoText}>
+          Le modèle GLB est affiché en temps réel avec un rendu cartoon three.js.
+        </Text>
+        {hasAvatarChanges ? (
+          <TouchableOpacity
+            style={styles.cancelAvatarButton}
+            onPress={handleResetAvatarChanges}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.cancelAvatarButtonLabel}>Revenir à l’avatar enregistré</Text>
+          </TouchableOpacity>
+        ) : null}
+        <TouchableOpacity
+          style={styles.secondaryAvatarButton}
+          onPress={() => setIsSelectingFallbackAvatar((previous) => !previous)}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.secondaryAvatarButtonLabel}>
+            {isSelectingFallbackAvatar
+              ? "Fermer la sélection 2D de secours"
+              : "Choisir l’avatar 2D de secours"}
+          </Text>
+        </TouchableOpacity>
+        {isSelectingFallbackAvatar ? (
           <>
-            <Text style={styles.sectionSubtitle}>
-              Choisissez le type d’avatar qui vous représente. Son apparence évoluera avec vos niveaux.
+            <Text style={styles.avatarInfoText}>
+              Ce style sera utilisé si le chargement du modèle 3D échoue.
             </Text>
             <View style={styles.avatarOptionsGrid}>
               {AVATAR_OPTIONS.map((option) => {
@@ -302,22 +412,8 @@ export default function ProfileScreen() {
                 );
               })}
             </View>
-            {initialAvatarType ? (
-              <TouchableOpacity
-                style={styles.cancelAvatarButton}
-                onPress={() => {
-                  setIsEditingAvatar(false);
-                  if (initialAvatarType) {
-                    setForm((previous) => ({ ...previous, avatarType: initialAvatarType }));
-                  }
-                }}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.cancelAvatarButtonLabel}>Annuler</Text>
-              </TouchableOpacity>
-            ) : null}
           </>
-        )}
+        ) : null}
 
         <Text style={styles.sectionTitle}>Informations générales</Text>
 
@@ -440,6 +536,11 @@ export default function ProfileScreen() {
           {renderContent()}
         </ScrollView>
         <BottomNav />
+        <ReadyPlayerMeCreatorModal
+          visible={isAvatarCreatorVisible}
+          onClose={() => setIsAvatarCreatorVisible(false)}
+          onAvatarExported={handleAvatarExported}
+        />
       </View>
     </SafeAreaView>
   );
@@ -550,6 +651,10 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
+  currentAvatarCanvas: {
+    width: "100%",
+    height: "100%",
+  },
   currentAvatarTextGroup: {
     flex: 1,
     gap: 4,
@@ -611,28 +716,72 @@ const styles = StyleSheet.create({
     color: "#64748b",
     fontSize: 12,
   },
-  editAvatarButton: {
-    alignSelf: "flex-start",
-    marginTop: 4,
-    paddingHorizontal: 18,
+  avatarActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 8,
+  },
+  avatarActionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 999,
+    borderRadius: 14,
     backgroundColor: "#1f6feb",
   },
-  editAvatarButtonLabel: {
+  avatarActionButtonLabel: {
     color: "#f8fafc",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  avatarRemoveButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: "#1f2937",
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  avatarRemoveButtonLabel: {
+    color: "#f87171",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  avatarInfoText: {
+    marginTop: 8,
+    color: "#94a3b8",
+    fontSize: 13,
+  },
+  secondaryAvatarButton: {
+    alignSelf: "flex-start",
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#334155",
+    backgroundColor: "#0b1220",
+  },
+  secondaryAvatarButtonLabel: {
+    color: "#cbd5f5",
     fontSize: 14,
     fontWeight: "600",
   },
   cancelAvatarButton: {
     alignSelf: "flex-start",
-    marginTop: 4,
+    marginTop: 12,
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 999,
+    paddingVertical: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#30363d",
-    backgroundColor: "transparent",
+    borderColor: "#334155",
+    backgroundColor: "#111827",
   },
   cancelAvatarButtonLabel: {
     color: "#94a3b8",

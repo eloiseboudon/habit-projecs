@@ -32,6 +32,7 @@ export type DashboardResponse = {
   current_xp: number;
   xp_to_next: number;
   avatar_type: AvatarType;
+  avatar_url: string | null;
   domain_stats: DashboardDomainStat[];
 };
 
@@ -131,6 +132,7 @@ export type UserProfile = {
   notifications_enabled: boolean;
   first_day_of_week: number;
   avatar_type: AvatarType;
+  avatar_url: string | null;
 };
 
 export type UpdateUserProfileRequest = UserProfile;

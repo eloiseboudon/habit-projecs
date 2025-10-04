@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, EmailStr, Field
 
 from .models import ChallengeStatus, SnapshotPeriod, SourceType
 
@@ -177,6 +177,7 @@ class DashboardResponse(BaseModel):
     current_xp: int
     xp_to_next: int
     avatar_type: AvatarType
+    avatar_url: Optional[AnyHttpUrl] = None
     domain_stats: list[DashboardDomainStat]
 
 
@@ -276,6 +277,7 @@ class UserProfile(BaseModel):
     notifications_enabled: bool
     first_day_of_week: int = Field(ge=0, le=6)
     avatar_type: AvatarType
+    avatar_url: Optional[AnyHttpUrl] = None
 
 
 class UserProfileUpdateRequest(UserProfile):

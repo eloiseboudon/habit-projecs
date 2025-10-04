@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from urllib.parse import urlparse
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
@@ -161,6 +162,7 @@ def serialize_user_profile(user: User, settings: UserSettings) -> UserProfile:
         notifications_enabled=settings.notifications_enabled,
         first_day_of_week=settings.first_day_of_week,
         avatar_type=settings.avatar_type,
+        avatar_url=settings.avatar_url,
     )
 
 
@@ -272,6 +274,18 @@ def update_user_profile(
     settings.notifications_enabled = payload.notifications_enabled
     settings.first_day_of_week = payload.first_day_of_week
     settings.avatar_type = payload.avatar_type.value
+
+    avatar_url = payload.avatar_url.strip() if payload.avatar_url else None
+    if avatar_url:
+        parsed_url = urlparse(avatar_url)
+        host = parsed_url.netloc.lower()
+        allowed_hosts = ("models.readyplayer.me", "cdn.readyplayer.me")
+        if not any(host == allowed or host.endswith(f".{allowed}") for allowed in allowed_hosts):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="URL d'avatar Ready Player Me invalide.",
+            )
+    settings.avatar_url = avatar_url
 
     session.commit()
     session.refresh(user)
@@ -388,6 +402,7 @@ def get_dashboard(user_id: UUID, session: Session = Depends(get_db_session)) -> 
         current_xp=current_xp,
         xp_to_next=xp_to_next,
         avatar_type=settings.avatar_type,
+        avatar_url=settings.avatar_url,
         domain_stats=domain_stats,
     )
 

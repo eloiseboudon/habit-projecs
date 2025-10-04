@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import { useRootNavigationState, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -16,12 +15,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import BottomNav from "../../components/BottomNav";
-import { getAvatarAsset } from "../../constants/avatarAssets";
 import { AVATAR_OPTIONS } from "../../constants/avatarTypes";
 import { useAuth } from "../../context/AuthContext";
 import { useHabitData } from "../../context/HabitDataContext";
 import { fetchUserProfile, updateUserProfile } from "../../lib/api";
 import type { AvatarType } from "../../types/api";
+import DiceBearAvatar from "../../components/DiceBearAvatar";
 
 
 type ProfileFormState = {
@@ -62,7 +61,7 @@ export default function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const avatarPreviewLevel = dashboard?.level ?? 1;
+  const avatarSeed = user?.id ?? dashboard?.user_id ?? "preview";
 
   useEffect(() => {
     if (!navigationState?.key) {
@@ -206,7 +205,6 @@ export default function ProfileScreen() {
               {(() => {
                 const currentOption =
                   AVATAR_OPTIONS.find((option) => option.type === form.avatarType) ?? AVATAR_OPTIONS[0];
-                const preview = getAvatarAsset(form.avatarType, avatarPreviewLevel);
                 const accentColor = currentOption.colors[1] ?? "#38bdf8";
                 const previewBackground = currentOption.colors[0] ?? "#0f172a";
                 return (
@@ -217,18 +215,21 @@ export default function ProfileScreen() {
                         { borderColor: accentColor, backgroundColor: previewBackground },
                       ]}
                     >
-                      {preview ? (
-                        <Image source={preview} style={styles.currentAvatarImage} contentFit="contain" />
-                      ) : (
-                        <Text style={styles.avatarOptionInitials}>
-                          {currentOption.label
-                            .split(" ")
-                            .map((part) => part[0] ?? "")
-                            .join("")
-                            .slice(0, 2)
-                            .toUpperCase()}
-                        </Text>
-                      )}
+                      <DiceBearAvatar
+                        type={form.avatarType}
+                        seed={avatarSeed}
+                        size={68}
+                        fallback={
+                          <Text style={styles.avatarOptionInitials}>
+                            {currentOption.label
+                              .split(" ")
+                              .map((part) => part[0] ?? "")
+                              .join("")
+                              .slice(0, 2)
+                              .toUpperCase()}
+                          </Text>
+                        }
+                      />
                     </View>
                     <View style={styles.currentAvatarTextGroup}>
                       <Text style={styles.avatarOptionLabel}>{currentOption.label}</Text>
@@ -257,7 +258,6 @@ export default function ProfileScreen() {
             <View style={styles.avatarOptionsGrid}>
               {AVATAR_OPTIONS.map((option) => {
                 const isSelected = option.type === form.avatarType;
-                const preview = getAvatarAsset(option.type, avatarPreviewLevel);
                 const accentColor = option.colors[1] ?? "#38bdf8";
                 const previewBackground = option.colors[0] ?? "#0f172a";
                 const cardBackground = isSelected ? "#0f172a" : "#161b22";
@@ -285,11 +285,12 @@ export default function ProfileScreen() {
                         { borderColor: accentColor, backgroundColor: previewBackground },
                       ]}
                     >
-                      {preview ? (
-                        <Image source={preview} style={styles.avatarOptionImage} contentFit="contain" />
-                      ) : (
-                        <Text style={styles.avatarOptionInitials}>{initials}</Text>
-                      )}
+                      <DiceBearAvatar
+                        type={option.type}
+                        seed={avatarSeed}
+                        size={56}
+                        fallback={<Text style={styles.avatarOptionInitials}>{initials}</Text>}
+                      />
                     </View>
                     <View style={styles.avatarOptionTextGroup}>
                       <Text style={styles.avatarOptionLabel}>{option.label}</Text>
@@ -546,10 +547,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "#0f172a",
   },
-  currentAvatarImage: {
-    width: "100%",
-    height: "100%",
-  },
   currentAvatarTextGroup: {
     flex: 1,
     gap: 4,
@@ -584,10 +581,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
     backgroundColor: "#0f172a",
-  },
-  avatarOptionImage: {
-    width: "100%",
-    height: "100%",
   },
   avatarOptionInitials: {
     color: "#f8fafc",

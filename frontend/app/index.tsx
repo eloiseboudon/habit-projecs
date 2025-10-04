@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import { Redirect, useRootNavigationState, useRouter } from "expo-router";
 import {
   ActivityIndicator,
@@ -13,7 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import BottomNav from "../components/BottomNav";
-import { getAvatarAsset } from "../constants/avatarAssets";
+import DiceBearAvatar from "../components/DiceBearAvatar";
 import { getAvatarOption } from "../constants/avatarTypes";
 import { useAuth } from "../context/AuthContext";
 import { useHabitData } from "../context/HabitDataContext";
@@ -71,9 +70,9 @@ export default function Index() {
 
     const statsToDisplay = dashboard.domain_stats;
     const avatarOption = getAvatarOption(dashboard.avatar_type);
-    const avatarSource = getAvatarAsset(dashboard.avatar_type, dashboard.level);
     const avatarBackground = avatarOption.colors[0] ?? "#1f2937";
     const avatarAccent = avatarOption.colors[1] ?? "#38bdf8";
+    const avatarSeed = dashboard.user_id;
 
     if (statsToDisplay.length === 0) {
       return (
@@ -89,11 +88,12 @@ export default function Index() {
       <>
         <View style={styles.avatarContainer}>
           <View style={[styles.avatar, { backgroundColor: avatarBackground, borderColor: avatarAccent }]}>
-            {avatarSource ? (
-              <Image source={avatarSource} style={styles.avatarImage} contentFit="contain" />
-            ) : (
-              <Text style={styles.avatarInitials}>{dashboard.initials}</Text>
-            )}
+            <DiceBearAvatar
+              type={dashboard.avatar_type}
+              seed={avatarSeed}
+              size={68}
+              fallback={<Text style={styles.avatarInitials}>{dashboard.initials}</Text>}
+            />
           </View>
           <View style={styles.avatarDetails}>
             <Text style={styles.displayName}>{dashboard.display_name}</Text>
@@ -259,11 +259,6 @@ const styles = StyleSheet.create({
     borderColor: "#1f6feb",
     padding: 2,
     overflow: "hidden",
-  },
-  avatarImage: {
-    width: "180%",
-    height: "180%",
-    transform: [{ scale: 1.1 }],
   },
   avatarInitials: {
     color: "white",

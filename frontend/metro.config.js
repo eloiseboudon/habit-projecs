@@ -4,6 +4,8 @@ const { resolve } = require('metro-resolver');
 
 const config = getDefaultConfig(__dirname);
 
+config.resolver ??= {};
+
 const shim = (loader) => path.resolve(__dirname, `lib/shims/${loader}.js`);
 
 const shimmedLoaders = new Map([
@@ -17,7 +19,12 @@ const shimmedLoaders = new Map([
 
 const previousResolveRequest = config.resolver.resolveRequest;
 
-config.resolver.resolveRequest = (context, moduleName, platform) => {
+config.resolver.resolveRequest = (
+  context,
+  moduleName,
+  platform,
+  resolverOptions,
+) => {
   const shimmed = shimmedLoaders.get(moduleName);
   if (shimmed) {
     return {
@@ -26,9 +33,16 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     };
   }
 
-  return previousResolveRequest
-    ? previousResolveRequest(context, moduleName, platform)
-    : resolve(context, moduleName, platform);
+  if (previousResolveRequest) {
+    return previousResolveRequest(
+      context,
+      moduleName,
+      platform,
+      resolverOptions,
+    );
+  }
+
+  return resolve(context, moduleName, platform, resolverOptions);
 };
 
 module.exports = config;

@@ -250,8 +250,8 @@ const styles = StyleSheet.create({
     borderColor: "#30363d",
   },
   avatar: {
-    width: 96,
-    height: 96,
+    width: 72,
+    height: 72,
     borderRadius: 48,
     alignItems: "center",
     justifyContent: "center",
@@ -261,8 +261,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   avatarImage: {
-    width: "100%",
-    height: "100%",
+    width: "180%",
+    height: "180%",
     transform: [{ scale: 1.1 }],
   },
   avatarInitials: {

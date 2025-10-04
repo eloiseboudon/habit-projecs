@@ -30,6 +30,7 @@ from ..schemas import (
     BadgeItem,
     DashboardDomainStat,
     DashboardResponse,
+    DiceBearStyle,
     HistoryItem,
     ProgressionResponse,
     TaskCreate,
@@ -68,6 +69,29 @@ def compute_initials(name: str) -> str:
         return "?"
     initials = "".join(parts[:2])
     return initials.upper()
+
+
+DEFAULT_AVATAR_STYLE = DiceBearStyle.ADVENTURER
+
+LEGACY_AVATAR_STYLE_MAP: dict[str, DiceBearStyle] = {
+    "explorateur": DiceBearStyle.ADVENTURER,
+    "batisseur": DiceBearStyle.LORELEI_NEUTRAL,
+    "moine": DiceBearStyle.NOTIONISTS_NEUTRAL,
+    "guerrier": DiceBearStyle.MICAH,
+}
+
+
+def normalize_avatar_style(value: str | None) -> DiceBearStyle:
+    if not value:
+        return DEFAULT_AVATAR_STYLE
+
+    try:
+        return DiceBearStyle(value)
+    except ValueError:
+        mapped = LEGACY_AVATAR_STYLE_MAP.get(value.lower())
+        if mapped:
+            return mapped
+        return DEFAULT_AVATAR_STYLE
 
 
 def normalize_text(value: str) -> str:
@@ -121,7 +145,7 @@ def ensure_user_settings(session: Session, user: User) -> UserSettings:
     if settings:
         return settings
 
-    settings = UserSettings(user_id=user.id)
+    settings = UserSettings(user_id=user.id, avatar_type=DEFAULT_AVATAR_STYLE.value)
     session.add(settings)
     session.commit()
     session.refresh(settings)
@@ -160,7 +184,7 @@ def serialize_user_profile(user: User, settings: UserSettings) -> UserProfile:
         language=settings.language,
         notifications_enabled=settings.notifications_enabled,
         first_day_of_week=settings.first_day_of_week,
-        avatar_type=settings.avatar_type,
+        avatar_style=normalize_avatar_style(settings.avatar_type),
     )
 
 
@@ -271,7 +295,7 @@ def update_user_profile(
     settings.language = payload.language.strip() or settings.language
     settings.notifications_enabled = payload.notifications_enabled
     settings.first_day_of_week = payload.first_day_of_week
-    settings.avatar_type = payload.avatar_type.value
+    settings.avatar_type = payload.avatar_style.value
 
     session.commit()
     session.refresh(user)
@@ -387,7 +411,7 @@ def get_dashboard(user_id: UUID, session: Session = Depends(get_db_session)) -> 
         level=current_level,
         current_xp=current_xp,
         xp_to_next=xp_to_next,
-        avatar_type=settings.avatar_type,
+        avatar_style=normalize_avatar_style(settings.avatar_type),
         domain_stats=domain_stats,
     )
 

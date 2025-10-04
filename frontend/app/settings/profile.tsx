@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import { useRootNavigationState, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -16,12 +15,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import BottomNav from "../../components/BottomNav";
-import { getAvatarAsset } from "../../constants/avatarAssets";
-import { AVATAR_OPTIONS } from "../../constants/avatarTypes";
+import {
+  DICEBEAR_STYLE_OPTIONS,
+  DEFAULT_DICEBEAR_STYLE,
+  getDiceBearStyleOption,
+} from "../../constants/dicebearStyles";
 import { useAuth } from "../../context/AuthContext";
 import { useHabitData } from "../../context/HabitDataContext";
 import { fetchUserProfile, updateUserProfile } from "../../lib/api";
-import type { AvatarType } from "../../types/api";
+import type { AvatarStyle } from "../../types/api";
+import DiceBearAvatar from "../../components/DiceBearAvatar";
 
 
 type ProfileFormState = {
@@ -31,7 +34,7 @@ type ProfileFormState = {
   language: string;
   notificationsEnabled: boolean;
   firstDayOfWeek: string;
-  avatarType: AvatarType;
+  avatarStyle: AvatarStyle;
 };
 
 const INITIAL_FORM: ProfileFormState = {
@@ -41,7 +44,7 @@ const INITIAL_FORM: ProfileFormState = {
   language: "fr",
   notificationsEnabled: true,
   firstDayOfWeek: "1",
-  avatarType: "explorateur",
+  avatarStyle: DEFAULT_DICEBEAR_STYLE,
 };
 
 export default function ProfileScreen() {
@@ -57,12 +60,12 @@ export default function ProfileScreen() {
   } = useHabitData();
 
   const [form, setForm] = useState<ProfileFormState>(INITIAL_FORM);
-  const [initialAvatarType, setInitialAvatarType] = useState<AvatarType | null>(null);
+  const [initialAvatarStyle, setInitialAvatarStyle] = useState<AvatarStyle | null>(null);
   const [isEditingAvatar, setIsEditingAvatar] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const avatarPreviewLevel = dashboard?.level ?? 1;
+  const avatarSeed = user?.id ?? dashboard?.user_id ?? "preview";
 
   useEffect(() => {
     if (!navigationState?.key) {
@@ -89,9 +92,9 @@ export default function ProfileScreen() {
         language: response.language,
         notificationsEnabled: response.notifications_enabled,
         firstDayOfWeek: String(response.first_day_of_week ?? 1),
-        avatarType: response.avatar_type,
+        avatarStyle: response.avatar_style,
       });
-      setInitialAvatarType(response.avatar_type);
+      setInitialAvatarStyle(response.avatar_style);
       setIsEditingAvatar(false);
     } catch (error) {
       const message =
@@ -143,7 +146,7 @@ export default function ProfileScreen() {
         language: form.language.trim() || "fr",
         notifications_enabled: form.notificationsEnabled,
         first_day_of_week: firstDay,
-        avatar_type: form.avatarType,
+        avatar_style: form.avatarStyle,
       };
       const response = await updateUserProfile(user.id, payload);
       setForm({
@@ -153,9 +156,9 @@ export default function ProfileScreen() {
         language: response.language,
         notificationsEnabled: response.notifications_enabled,
         firstDayOfWeek: String(response.first_day_of_week ?? firstDay),
-        avatarType: response.avatar_type,
+        avatarStyle: response.avatar_style,
       });
-      setInitialAvatarType(response.avatar_type);
+      setInitialAvatarStyle(response.avatar_style);
       setIsEditingAvatar(false);
       if (authUser) {
         updateUser({ id: authUser.id, display_name: response.display_name });
@@ -197,18 +200,17 @@ export default function ProfileScreen() {
     return (
       <View style={styles.formContainer}>
         <Text style={styles.sectionTitle}>Avatar</Text>
-        {initialAvatarType && !isEditingAvatar ? (
+        {initialAvatarStyle && !isEditingAvatar ? (
           <>
             <Text style={styles.sectionSubtitle}>
-              Voici votre avatar actuel. Vous pourrez le modifier quand vous le souhaitez.
+              Voici votre style actuel. Vous pourrez le modifier quand vous le souhaitez.
             </Text>
             <View style={styles.currentAvatarCard}>
               {(() => {
-                const currentOption =
-                  AVATAR_OPTIONS.find((option) => option.type === form.avatarType) ?? AVATAR_OPTIONS[0];
-                const preview = getAvatarAsset(form.avatarType, avatarPreviewLevel);
-                const accentColor = currentOption.colors[1] ?? "#38bdf8";
-                const previewBackground = currentOption.colors[0] ?? "#0f172a";
+                const currentOption = getDiceBearStyleOption(form.avatarStyle);
+                const accentColor = currentOption.accentColor;
+                const previewBackground = currentOption.backgroundColor;
+                const tagsText = currentOption.tags.join(" • ");
                 return (
                   <>
                     <View
@@ -217,25 +219,28 @@ export default function ProfileScreen() {
                         { borderColor: accentColor, backgroundColor: previewBackground },
                       ]}
                     >
-                      {preview ? (
-                        <Image source={preview} style={styles.currentAvatarImage} contentFit="contain" />
-                      ) : (
-                        <Text style={styles.avatarOptionInitials}>
-                          {currentOption.label
-                            .split(" ")
-                            .map((part) => part[0] ?? "")
-                            .join("")
-                            .slice(0, 2)
-                            .toUpperCase()}
-                        </Text>
-                      )}
+                      <DiceBearAvatar
+                        style={form.avatarStyle}
+                        seed={avatarSeed}
+                        size={68}
+                        fallback={
+                          <Text style={styles.avatarOptionInitials}>
+                            {currentOption.label
+                              .split(" ")
+                              .map((part) => part[0] ?? "")
+                              .join("")
+                              .slice(0, 2)
+                              .toUpperCase()}
+                          </Text>
+                        }
+                      />
                     </View>
                     <View style={styles.currentAvatarTextGroup}>
                       <Text style={styles.avatarOptionLabel}>{currentOption.label}</Text>
-                      <Text style={styles.avatarOptionTagline}>{currentOption.tagline}</Text>
-                      <Text style={styles.avatarOptionEvolution}>
-                        Évolution: {currentOption.evolution.join(" → ")}
-                      </Text>
+                      <Text style={styles.avatarOptionTagline}>{currentOption.description}</Text>
+                      {tagsText ? (
+                        <Text style={styles.avatarOptionTags}>{tagsText}</Text>
+                      ) : null}
                     </View>
                   </>
                 );
@@ -252,14 +257,13 @@ export default function ProfileScreen() {
         ) : (
           <>
             <Text style={styles.sectionSubtitle}>
-              Choisissez le type d’avatar qui vous représente. Son apparence évoluera avec vos niveaux.
+              Parcourez la bibliothèque DiceBear et choisissez le style qui vous représente.
             </Text>
             <View style={styles.avatarOptionsGrid}>
-              {AVATAR_OPTIONS.map((option) => {
-                const isSelected = option.type === form.avatarType;
-                const preview = getAvatarAsset(option.type, avatarPreviewLevel);
-                const accentColor = option.colors[1] ?? "#38bdf8";
-                const previewBackground = option.colors[0] ?? "#0f172a";
+              {DICEBEAR_STYLE_OPTIONS.map((option) => {
+                const isSelected = option.id === form.avatarStyle;
+                const accentColor = option.accentColor;
+                const previewBackground = option.backgroundColor;
                 const cardBackground = isSelected ? "#0f172a" : "#161b22";
                 const borderColor = isSelected ? accentColor : "#1f2937";
                 const initials = option.label
@@ -268,15 +272,17 @@ export default function ProfileScreen() {
                   .join("")
                   .slice(0, 2)
                   .toUpperCase();
+                const previewSeed = avatarSeed ?? option.previewSeed ?? option.id;
+                const tagsText = option.tags.join(" • ");
                 return (
                   <TouchableOpacity
-                    key={option.type}
+                    key={option.id}
                     style={[
                       styles.avatarOption,
                       isSelected ? styles.avatarOptionSelected : null,
                       { backgroundColor: cardBackground, borderColor },
                     ]}
-                    onPress={() => handleChange("avatarType", option.type)}
+                    onPress={() => handleChange("avatarStyle", option.id)}
                     activeOpacity={0.85}
                   >
                     <View
@@ -285,30 +291,31 @@ export default function ProfileScreen() {
                         { borderColor: accentColor, backgroundColor: previewBackground },
                       ]}
                     >
-                      {preview ? (
-                        <Image source={preview} style={styles.avatarOptionImage} contentFit="contain" />
-                      ) : (
-                        <Text style={styles.avatarOptionInitials}>{initials}</Text>
-                      )}
+                      <DiceBearAvatar
+                        style={option.id}
+                        seed={previewSeed}
+                        size={56}
+                        fallback={<Text style={styles.avatarOptionInitials}>{initials}</Text>}
+                      />
                     </View>
                     <View style={styles.avatarOptionTextGroup}>
                       <Text style={styles.avatarOptionLabel}>{option.label}</Text>
-                      <Text style={styles.avatarOptionTagline}>{option.tagline}</Text>
-                      <Text style={styles.avatarOptionEvolution}>
-                        Évolution: {option.evolution.join(" → ")}
-                      </Text>
+                      <Text style={styles.avatarOptionTagline}>{option.description}</Text>
+                      {tagsText ? (
+                        <Text style={styles.avatarOptionTags}>{tagsText}</Text>
+                      ) : null}
                     </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
-            {initialAvatarType ? (
+            {initialAvatarStyle ? (
               <TouchableOpacity
                 style={styles.cancelAvatarButton}
                 onPress={() => {
                   setIsEditingAvatar(false);
-                  if (initialAvatarType) {
-                    setForm((previous) => ({ ...previous, avatarType: initialAvatarType }));
+                  if (initialAvatarStyle) {
+                    setForm((previous) => ({ ...previous, avatarStyle: initialAvatarStyle }));
                   }
                 }}
                 activeOpacity={0.85}
@@ -546,10 +553,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "#0f172a",
   },
-  currentAvatarImage: {
-    width: "100%",
-    height: "100%",
-  },
   currentAvatarTextGroup: {
     flex: 1,
     gap: 4,
@@ -585,10 +588,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "#0f172a",
   },
-  avatarOptionImage: {
-    width: "100%",
-    height: "100%",
-  },
   avatarOptionInitials: {
     color: "#f8fafc",
     fontSize: 20,
@@ -607,7 +606,7 @@ const styles = StyleSheet.create({
     color: "#94a3b8",
     fontSize: 13,
   },
-  avatarOptionEvolution: {
+  avatarOptionTags: {
     color: "#64748b",
     fontSize: 12,
   },

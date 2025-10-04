@@ -11,11 +11,37 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from .models import ChallengeStatus, SnapshotPeriod, SourceType
 
 
-class AvatarType(str, enum.Enum):
-    EXPLORATEUR = "explorateur"
-    BATISSEUR = "batisseur"
-    MOINE = "moine"
-    GUERRIER = "guerrier"
+class DiceBearStyle(str, enum.Enum):
+    ADVENTURER = "adventurer"
+    ADVENTURER_NEUTRAL = "adventurer-neutral"
+    AVATAAARS = "avataaars"
+    AVATAAARS_NEUTRAL = "avataaars-neutral"
+    BIG_EARS = "big-ears"
+    BIG_EARS_NEUTRAL = "big-ears-neutral"
+    BIG_SMILE = "big-smile"
+    BOTTTS = "bottts"
+    BOTTTS_NEUTRAL = "bottts-neutral"
+    CROODLES = "croodles"
+    CROODLES_NEUTRAL = "croodles-neutral"
+    DYLAN = "dylan"
+    FUN_EMOJI = "fun-emoji"
+    GLASS = "glass"
+    ICONS = "icons"
+    IDENTICON = "identicon"
+    INITIALS = "initials"
+    LORELEI = "lorelei"
+    LORELEI_NEUTRAL = "lorelei-neutral"
+    MICAH = "micah"
+    MINIAVS = "miniavs"
+    NOTIONISTS = "notionists"
+    NOTIONISTS_NEUTRAL = "notionists-neutral"
+    OPEN_PEEPS = "open-peeps"
+    PERSONAS = "personas"
+    PIXEL_ART = "pixel-art"
+    PIXEL_ART_NEUTRAL = "pixel-art-neutral"
+    RINGS = "rings"
+    SHAPES = "shapes"
+    THUMBS = "thumbs"
 
 
 class DomainBase(BaseModel):
@@ -176,7 +202,7 @@ class DashboardResponse(BaseModel):
     level: int
     current_xp: int
     xp_to_next: int
-    avatar_type: AvatarType
+    avatar_style: DiceBearStyle
     domain_stats: list[DashboardDomainStat]
 
 
@@ -275,7 +301,7 @@ class UserProfile(BaseModel):
     language: str = Field(min_length=2, max_length=10)
     notifications_enabled: bool
     first_day_of_week: int = Field(ge=0, le=6)
-    avatar_type: AvatarType
+    avatar_style: DiceBearStyle
 
 
 class UserProfileUpdateRequest(UserProfile):

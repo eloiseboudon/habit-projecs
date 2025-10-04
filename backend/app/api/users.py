@@ -160,6 +160,7 @@ def serialize_user_profile(user: User, settings: UserSettings) -> UserProfile:
         language=settings.language,
         notifications_enabled=settings.notifications_enabled,
         first_day_of_week=settings.first_day_of_week,
+        avatar_type=settings.avatar_type,
     )
 
 
@@ -270,6 +271,7 @@ def update_user_profile(
     settings.language = payload.language.strip() or settings.language
     settings.notifications_enabled = payload.notifications_enabled
     settings.first_day_of_week = payload.first_day_of_week
+    settings.avatar_type = payload.avatar_type.value
 
     session.commit()
     session.refresh(user)
@@ -286,6 +288,7 @@ def list_users(session: Session = Depends(get_db_session)) -> list[UserSummary]:
 @router.get("/{user_id}/dashboard", response_model=DashboardResponse)
 def get_dashboard(user_id: UUID, session: Session = Depends(get_db_session)) -> DashboardResponse:
     user = resolve_user(session, user_id)
+    settings = ensure_user_settings(session, user)
 
     level = session.get(UserLevel, user_id)
     if level:
@@ -384,6 +387,7 @@ def get_dashboard(user_id: UUID, session: Session = Depends(get_db_session)) -> 
         level=current_level,
         current_xp=current_xp,
         xp_to_next=xp_to_next,
+        avatar_type=settings.avatar_type,
         domain_stats=domain_stats,
     )
 

@@ -31,6 +31,7 @@ export type DashboardResponse = {
   level: number;
   current_xp: number;
   xp_to_next: number;
+  avatar_type: AvatarType;
   domain_stats: DashboardDomainStat[];
 };
 
@@ -120,6 +121,8 @@ export type UpdateUserDomainSettingsRequest = {
   }[];
 };
 
+export type AvatarType = "explorateur" | "batisseur" | "moine" | "guerrier";
+
 export type UserProfile = {
   display_name: string;
   email: string;
@@ -127,6 +130,7 @@ export type UserProfile = {
   language: string;
   notifications_enabled: boolean;
   first_day_of_week: number;
+  avatar_type: AvatarType;
 };
 
 export type UpdateUserProfileRequest = UserProfile;

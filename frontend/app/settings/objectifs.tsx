@@ -154,7 +154,7 @@ export default function ObjectivesScreen() {
       const message =
         error instanceof Error
           ? error.message
-          : "Impossible d'enregistrer vos objectifs pour le moment.";
+          : "Impossible d’enregistrer vos objectifs pour le moment.";
       Alert.alert("Erreur", message);
     } finally {
       setIsSaving(false);
@@ -185,7 +185,7 @@ export default function ObjectivesScreen() {
     if (settings.length === 0) {
       return (
         <View style={styles.loadingContainer}>
-          <Text style={styles.errorLabel}>Aucun domaine n'est disponible pour votre compte.</Text>
+          <Text style={styles.errorLabel}>Aucun domaine n’est disponible pour votre compte.</Text>
         </View>
       );
     }
@@ -194,7 +194,7 @@ export default function ObjectivesScreen() {
       <View style={styles.formContainer}>
         <Text style={styles.introText}>
           Activez les domaines que vous souhaitez suivre et définissez un objectif de points
-          hebdomadaire pour chacun d'entre eux.
+          hebdomadaire pour chacun d’entre eux.
         </Text>
 
         {settings.map((item) => (

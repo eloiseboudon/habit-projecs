@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 
 import type { AvatarType } from "../types/api";
 

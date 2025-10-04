@@ -57,6 +57,8 @@ export default function ProfileScreen() {
   } = useHabitData();
 
   const [form, setForm] = useState<ProfileFormState>(INITIAL_FORM);
+  const [initialAvatarType, setInitialAvatarType] = useState<AvatarType | null>(null);
+  const [isEditingAvatar, setIsEditingAvatar] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -89,6 +91,8 @@ export default function ProfileScreen() {
         firstDayOfWeek: String(response.first_day_of_week ?? 1),
         avatarType: response.avatar_type,
       });
+      setInitialAvatarType(response.avatar_type);
+      setIsEditingAvatar(false);
     } catch (error) {
       const message =
         error instanceof Error
@@ -151,6 +155,8 @@ export default function ProfileScreen() {
         firstDayOfWeek: String(response.first_day_of_week ?? firstDay),
         avatarType: response.avatar_type,
       });
+      setInitialAvatarType(response.avatar_type);
+      setIsEditingAvatar(false);
       if (authUser) {
         updateUser({ id: authUser.id, display_name: response.display_name });
       }
@@ -191,58 +197,127 @@ export default function ProfileScreen() {
     return (
       <View style={styles.formContainer}>
         <Text style={styles.sectionTitle}>Avatar</Text>
-        <Text style={styles.sectionSubtitle}>
-          Choisissez le type d’avatar qui vous représente. Son apparence évoluera avec vos niveaux.
-        </Text>
-
-        <View style={styles.avatarOptionsGrid}>
-          {AVATAR_OPTIONS.map((option) => {
-            const isSelected = option.type === form.avatarType;
-            const preview = getAvatarAsset(option.type, avatarPreviewLevel);
-            const accentColor = option.colors[1] ?? "#38bdf8";
-            const previewBackground = option.colors[0] ?? "#0f172a";
-            const cardBackground = isSelected ? "#0f172a" : "#161b22";
-            const borderColor = isSelected ? accentColor : "#1f2937";
-            const initials = option.label
-              .split(" ")
-              .map((part) => part[0] ?? "")
-              .join("")
-              .slice(0, 2)
-              .toUpperCase();
-            return (
+        {initialAvatarType && !isEditingAvatar ? (
+          <>
+            <Text style={styles.sectionSubtitle}>
+              Voici votre avatar actuel. Vous pourrez le modifier quand vous le souhaitez.
+            </Text>
+            <View style={styles.currentAvatarCard}>
+              {(() => {
+                const currentOption =
+                  AVATAR_OPTIONS.find((option) => option.type === form.avatarType) ?? AVATAR_OPTIONS[0];
+                const preview = getAvatarAsset(form.avatarType, avatarPreviewLevel);
+                const accentColor = currentOption.colors[1] ?? "#38bdf8";
+                const previewBackground = currentOption.colors[0] ?? "#0f172a";
+                return (
+                  <>
+                    <View
+                      style={[
+                        styles.currentAvatarPreview,
+                        { borderColor: accentColor, backgroundColor: previewBackground },
+                      ]}
+                    >
+                      {preview ? (
+                        <Image source={preview} style={styles.currentAvatarImage} contentFit="contain" />
+                      ) : (
+                        <Text style={styles.avatarOptionInitials}>
+                          {currentOption.label
+                            .split(" ")
+                            .map((part) => part[0] ?? "")
+                            .join("")
+                            .slice(0, 2)
+                            .toUpperCase()}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.currentAvatarTextGroup}>
+                      <Text style={styles.avatarOptionLabel}>{currentOption.label}</Text>
+                      <Text style={styles.avatarOptionTagline}>{currentOption.tagline}</Text>
+                      <Text style={styles.avatarOptionEvolution}>
+                        Évolution: {currentOption.evolution.join(" → ")}
+                      </Text>
+                    </View>
+                  </>
+                );
+              })()}
+            </View>
+            <TouchableOpacity
+              style={styles.editAvatarButton}
+              onPress={() => setIsEditingAvatar(true)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.editAvatarButtonLabel}>Modifier l’avatar</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <Text style={styles.sectionSubtitle}>
+              Choisissez le type d’avatar qui vous représente. Son apparence évoluera avec vos niveaux.
+            </Text>
+            <View style={styles.avatarOptionsGrid}>
+              {AVATAR_OPTIONS.map((option) => {
+                const isSelected = option.type === form.avatarType;
+                const preview = getAvatarAsset(option.type, avatarPreviewLevel);
+                const accentColor = option.colors[1] ?? "#38bdf8";
+                const previewBackground = option.colors[0] ?? "#0f172a";
+                const cardBackground = isSelected ? "#0f172a" : "#161b22";
+                const borderColor = isSelected ? accentColor : "#1f2937";
+                const initials = option.label
+                  .split(" ")
+                  .map((part) => part[0] ?? "")
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase();
+                return (
+                  <TouchableOpacity
+                    key={option.type}
+                    style={[
+                      styles.avatarOption,
+                      isSelected ? styles.avatarOptionSelected : null,
+                      { backgroundColor: cardBackground, borderColor },
+                    ]}
+                    onPress={() => handleChange("avatarType", option.type)}
+                    activeOpacity={0.85}
+                  >
+                    <View
+                      style={[
+                        styles.avatarOptionPreview,
+                        { borderColor: accentColor, backgroundColor: previewBackground },
+                      ]}
+                    >
+                      {preview ? (
+                        <Image source={preview} style={styles.avatarOptionImage} contentFit="contain" />
+                      ) : (
+                        <Text style={styles.avatarOptionInitials}>{initials}</Text>
+                      )}
+                    </View>
+                    <View style={styles.avatarOptionTextGroup}>
+                      <Text style={styles.avatarOptionLabel}>{option.label}</Text>
+                      <Text style={styles.avatarOptionTagline}>{option.tagline}</Text>
+                      <Text style={styles.avatarOptionEvolution}>
+                        Évolution: {option.evolution.join(" → ")}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {initialAvatarType ? (
               <TouchableOpacity
-                key={option.type}
-                style={[
-                  styles.avatarOption,
-                  isSelected ? styles.avatarOptionSelected : null,
-                  { backgroundColor: cardBackground, borderColor },
-                ]}
-                onPress={() => handleChange("avatarType", option.type)}
+                style={styles.cancelAvatarButton}
+                onPress={() => {
+                  setIsEditingAvatar(false);
+                  if (initialAvatarType) {
+                    setForm((previous) => ({ ...previous, avatarType: initialAvatarType }));
+                  }
+                }}
                 activeOpacity={0.85}
               >
-                <View
-                  style={[
-                    styles.avatarOptionPreview,
-                    { borderColor: accentColor, backgroundColor: previewBackground },
-                  ]}
-                >
-                  {preview ? (
-                    <Image source={preview} style={styles.avatarOptionImage} contentFit="contain" />
-                  ) : (
-                    <Text style={styles.avatarOptionInitials}>{initials}</Text>
-                  )}
-                </View>
-                <View style={styles.avatarOptionTextGroup}>
-                  <Text style={styles.avatarOptionLabel}>{option.label}</Text>
-                  <Text style={styles.avatarOptionTagline}>{option.tagline}</Text>
-                  <Text style={styles.avatarOptionEvolution}>
-                    Évolution: {option.evolution.join(" → ")}
-                  </Text>
-                </View>
+                <Text style={styles.cancelAvatarButtonLabel}>Annuler</Text>
               </TouchableOpacity>
-            );
-          })}
-        </View>
+            ) : null}
+          </>
+        )}
 
         <Text style={styles.sectionTitle}>Informations générales</Text>
 
@@ -450,6 +525,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  currentAvatarCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    backgroundColor: "#161b22",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#1f2937",
+    padding: 16,
+  },
+  currentAvatarPreview: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: "#1f6feb",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    backgroundColor: "#0f172a",
+  },
+  currentAvatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  currentAvatarTextGroup: {
+    flex: 1,
+    gap: 4,
+  },
   avatarOptionsGrid: {
     gap: 16,
   },
@@ -506,6 +610,34 @@ const styles = StyleSheet.create({
   avatarOptionEvolution: {
     color: "#64748b",
     fontSize: 12,
+  },
+  editAvatarButton: {
+    alignSelf: "flex-start",
+    marginTop: 4,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: "#1f6feb",
+  },
+  editAvatarButtonLabel: {
+    color: "#f8fafc",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  cancelAvatarButton: {
+    alignSelf: "flex-start",
+    marginTop: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#30363d",
+    backgroundColor: "transparent",
+  },
+  cancelAvatarButtonLabel: {
+    color: "#94a3b8",
+    fontSize: 14,
+    fontWeight: "600",
   },
   inputGroup: {
     gap: 8,

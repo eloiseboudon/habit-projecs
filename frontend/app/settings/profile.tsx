@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useRootNavigationState, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -15,9 +16,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import BottomNav from "../../components/BottomNav";
+import { getAvatarAsset } from "../../constants/avatarAssets";
+import { AVATAR_OPTIONS } from "../../constants/avatarTypes";
 import { useAuth } from "../../context/AuthContext";
 import { useHabitData } from "../../context/HabitDataContext";
 import { fetchUserProfile, updateUserProfile } from "../../lib/api";
+import type { AvatarType } from "../../types/api";
 
 
 type ProfileFormState = {
@@ -27,6 +31,7 @@ type ProfileFormState = {
   language: string;
   notificationsEnabled: boolean;
   firstDayOfWeek: string;
+  avatarType: AvatarType;
 };
 
 const INITIAL_FORM: ProfileFormState = {
@@ -36,6 +41,7 @@ const INITIAL_FORM: ProfileFormState = {
   language: "fr",
   notificationsEnabled: true,
   firstDayOfWeek: "1",
+  avatarType: "explorateur",
 };
 
 export default function ProfileScreen() {
@@ -46,7 +52,7 @@ export default function ProfileScreen() {
     updateUser,
   } = useAuth();
   const {
-    state: { user },
+    state: { user, dashboard },
     refresh,
   } = useHabitData();
 
@@ -54,6 +60,7 @@ export default function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const avatarPreviewLevel = dashboard?.level ?? 1;
 
   useEffect(() => {
     if (!navigationState?.key) {
@@ -80,6 +87,7 @@ export default function ProfileScreen() {
         language: response.language,
         notificationsEnabled: response.notifications_enabled,
         firstDayOfWeek: String(response.first_day_of_week ?? 1),
+        avatarType: response.avatar_type,
       });
     } catch (error) {
       const message =
@@ -109,7 +117,7 @@ export default function ProfileScreen() {
 
     const trimmedName = form.displayName.trim();
     if (!trimmedName) {
-      Alert.alert("Nom requis", "Veuillez indiquer un nom d'affichage valide.");
+      Alert.alert("Nom requis", "Veuillez indiquer un nom d’affichage valide.");
       return;
     }
 
@@ -131,6 +139,7 @@ export default function ProfileScreen() {
         language: form.language.trim() || "fr",
         notifications_enabled: form.notificationsEnabled,
         first_day_of_week: firstDay,
+        avatar_type: form.avatarType,
       };
       const response = await updateUserProfile(user.id, payload);
       setForm({
@@ -140,6 +149,7 @@ export default function ProfileScreen() {
         language: response.language,
         notificationsEnabled: response.notifications_enabled,
         firstDayOfWeek: String(response.first_day_of_week ?? firstDay),
+        avatarType: response.avatar_type,
       });
       if (authUser) {
         updateUser({ id: authUser.id, display_name: response.display_name });
@@ -150,7 +160,7 @@ export default function ProfileScreen() {
       const message =
         error instanceof Error
           ? error.message
-          : "Impossible d'enregistrer votre profil pour le moment.";
+          : "Impossible d’enregistrer votre profil pour le moment.";
       Alert.alert("Erreur", message);
     } finally {
       setIsSaving(false);
@@ -180,10 +190,64 @@ export default function ProfileScreen() {
 
     return (
       <View style={styles.formContainer}>
+        <Text style={styles.sectionTitle}>Avatar</Text>
+        <Text style={styles.sectionSubtitle}>
+          Choisissez le type d’avatar qui vous représente. Son apparence évoluera avec vos niveaux.
+        </Text>
+
+        <View style={styles.avatarOptionsGrid}>
+          {AVATAR_OPTIONS.map((option) => {
+            const isSelected = option.type === form.avatarType;
+            const preview = getAvatarAsset(option.type, avatarPreviewLevel);
+            const accentColor = option.colors[1] ?? "#38bdf8";
+            const previewBackground = option.colors[0] ?? "#0f172a";
+            const cardBackground = isSelected ? "#0f172a" : "#161b22";
+            const borderColor = isSelected ? accentColor : "#1f2937";
+            const initials = option.label
+              .split(" ")
+              .map((part) => part[0] ?? "")
+              .join("")
+              .slice(0, 2)
+              .toUpperCase();
+            return (
+              <TouchableOpacity
+                key={option.type}
+                style={[
+                  styles.avatarOption,
+                  isSelected ? styles.avatarOptionSelected : null,
+                  { backgroundColor: cardBackground, borderColor },
+                ]}
+                onPress={() => handleChange("avatarType", option.type)}
+                activeOpacity={0.85}
+              >
+                <View
+                  style={[
+                    styles.avatarOptionPreview,
+                    { borderColor: accentColor, backgroundColor: previewBackground },
+                  ]}
+                >
+                  {preview ? (
+                    <Image source={preview} style={styles.avatarOptionImage} contentFit="contain" />
+                  ) : (
+                    <Text style={styles.avatarOptionInitials}>{initials}</Text>
+                  )}
+                </View>
+                <View style={styles.avatarOptionTextGroup}>
+                  <Text style={styles.avatarOptionLabel}>{option.label}</Text>
+                  <Text style={styles.avatarOptionTagline}>{option.tagline}</Text>
+                  <Text style={styles.avatarOptionEvolution}>
+                    Évolution: {option.evolution.join(" → ")}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         <Text style={styles.sectionTitle}>Informations générales</Text>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Nom d'affichage</Text>
+          <Text style={styles.inputLabel}>Nom d’affichage</Text>
           <TextInput
             style={styles.input}
             value={form.displayName}
@@ -380,6 +444,68 @@ const styles = StyleSheet.create({
     color: "#f1f5f9",
     fontSize: 18,
     fontWeight: "700",
+  },
+  sectionSubtitle: {
+    color: "#94a3b8",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  avatarOptionsGrid: {
+    gap: 16,
+  },
+  avatarOption: {
+    flexDirection: "row",
+    gap: 16,
+    alignItems: "center",
+    backgroundColor: "#161b22",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#1f2937",
+    padding: 16,
+  },
+  avatarOptionSelected: {
+    shadowColor: "#38bdf8",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  avatarOptionPreview: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#1f6feb",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    backgroundColor: "#0f172a",
+  },
+  avatarOptionImage: {
+    width: "100%",
+    height: "100%",
+  },
+  avatarOptionInitials: {
+    color: "#f8fafc",
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  avatarOptionTextGroup: {
+    flex: 1,
+    gap: 4,
+  },
+  avatarOptionLabel: {
+    color: "#f1f5f9",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  avatarOptionTagline: {
+    color: "#94a3b8",
+    fontSize: 13,
+  },
+  avatarOptionEvolution: {
+    color: "#64748b",
+    fontSize: 12,
   },
   inputGroup: {
     gap: 8,

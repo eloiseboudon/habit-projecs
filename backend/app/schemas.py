@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import enum
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
@@ -8,6 +9,13 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from .models import ChallengeStatus, SnapshotPeriod, SourceType
+
+
+class AvatarType(str, enum.Enum):
+    EXPLORATEUR = "explorateur"
+    BATISSEUR = "batisseur"
+    MOINE = "moine"
+    GUERRIER = "guerrier"
 
 
 class DomainBase(BaseModel):
@@ -168,6 +176,7 @@ class DashboardResponse(BaseModel):
     level: int
     current_xp: int
     xp_to_next: int
+    avatar_type: AvatarType
     domain_stats: list[DashboardDomainStat]
 
 
@@ -266,6 +275,7 @@ class UserProfile(BaseModel):
     language: str = Field(min_length=2, max_length=10)
     notifications_enabled: bool
     first_day_of_week: int = Field(ge=0, le=6)
+    avatar_type: AvatarType
 
 
 class UserProfileUpdateRequest(UserProfile):

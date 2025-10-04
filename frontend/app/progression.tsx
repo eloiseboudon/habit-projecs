@@ -64,6 +64,13 @@ export default function ProgressionScreen() {
 
   const historyItems = useMemo(() => progression?.recent_history ?? [], [progression]);
   const weeklyStats = useMemo(() => progression?.weekly_stats ?? [], [progression]);
+  const weeklyStatRows = useMemo(() => {
+    const rows: typeof weeklyStats[] = [];
+    for (let index = 0; index < weeklyStats.length; index += 2) {
+      rows.push(weeklyStats.slice(index, index + 2));
+    }
+    return rows;
+  }, [weeklyStats]);
   const badges = useMemo(() => progression?.badges ?? [], [progression]);
 
   if ((status === "loading" || status === "idle") && !progression) {
@@ -124,19 +131,24 @@ export default function ProgressionScreen() {
                     <Text style={styles.emptyText}>Aucune donnée pour cette semaine.</Text>
                   ) : (
                     <View style={styles.statsGrid}>
-                      {weeklyStats.map((stat) => {
-                        const category = CATEGORIES[stat.domain_key as CategoryKey] ?? null;
-                        const icon = stat.icon ?? category?.icon ?? "📈";
-                        const label = category?.label ?? stat.domain_name;
-                        return (
-                          <View key={stat.domain_id} style={styles.statCard}>
-                            <Text style={styles.statIcon}>{icon}</Text>
-                            <Text style={styles.statLabel}>{label}</Text>
-                            <Text style={styles.statHighlight}>+{stat.weekly_xp} XP</Text>
-                            <Text style={styles.statSubHighlight}>{stat.weekly_points} pts</Text>
-                          </View>
-                        );
-                      })}
+                      {weeklyStatRows.map((row, rowIndex) => (
+                        <View key={`weekly-row-${rowIndex}`} style={styles.statRow}>
+                          {row.map((stat) => {
+                            const category = CATEGORIES[stat.domain_key as CategoryKey] ?? null;
+                            const icon = stat.icon ?? category?.icon ?? "📈";
+                            const label = category?.label ?? stat.domain_name;
+                            return (
+                              <View key={stat.domain_id} style={styles.statCard}>
+                                <Text style={styles.statIcon}>{icon}</Text>
+                                <Text style={styles.statLabel}>{label}</Text>
+                                <Text style={styles.statHighlight}>+{stat.weekly_xp} XP</Text>
+                                <Text style={styles.statSubHighlight}>{stat.weekly_points} pts</Text>
+                              </View>
+                            );
+                          })}
+                          {row.length === 1 ? <View style={styles.statCardPlaceholder} /> : null}
+                        </View>
+                      ))}
                     </View>
                   )}
                 </View>
@@ -251,18 +263,24 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   statsGrid: {
+    gap: 14,
+  },
+  statRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: 14,
   },
   statCard: {
-    flexBasis: "48%",
+    flex: 1,
     backgroundColor: "rgba(17, 24, 39, 0.6)",
     borderRadius: 18,
     borderWidth: 1,
     borderColor: "rgba(147, 197, 253, 0.2)",
     padding: 16,
     gap: 6,
+  },
+  statCardPlaceholder: {
+    flex: 1,
+    opacity: 0,
   },
   statIcon: {
     fontSize: 26,

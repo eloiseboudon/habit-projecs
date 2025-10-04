@@ -3,6 +3,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import {
   completeTaskLog,
   createTask as createTaskApi,
+  enableUserTaskTemplate,
+  disableUserTaskTemplate,
   fetchDashboard,
   fetchProgression,
   fetchTasks,
@@ -30,6 +32,8 @@ type HabitDataContextValue = {
   refresh: () => Promise<void>;
   completeTask: (taskId: string) => Promise<void>;
   createTask: (payload: CreateTaskRequest) => Promise<void>;
+  enableTaskTemplate: (templateId: number) => Promise<void>;
+  disableTaskTemplate: (templateId: number) => Promise<void>;
   isRefreshing: boolean;
 };
 
@@ -141,15 +145,47 @@ export function HabitDataProvider({ children }: { children: React.ReactNode }) {
     [refresh, state.user],
   );
 
+  const enableTaskTemplate = useCallback(
+    async (templateId: number) => {
+      if (!state.user) {
+        throw new Error("Utilisateur non chargé");
+      }
+      await enableUserTaskTemplate(state.user.id, templateId);
+      await refresh();
+    },
+    [refresh, state.user],
+  );
+
+  const disableTaskTemplate = useCallback(
+    async (templateId: number) => {
+      if (!state.user) {
+        throw new Error("Utilisateur non chargé");
+      }
+      await disableUserTaskTemplate(state.user.id, templateId);
+      await refresh();
+    },
+    [refresh, state.user],
+  );
+
   const value = useMemo<HabitDataContextValue>(
     () => ({
       state,
       refresh,
       completeTask,
       createTask,
+      enableTaskTemplate,
+      disableTaskTemplate,
       isRefreshing,
     }),
-    [state, refresh, completeTask, createTask, isRefreshing],
+    [
+      state,
+      refresh,
+      completeTask,
+      createTask,
+      enableTaskTemplate,
+      disableTaskTemplate,
+      isRefreshing,
+    ],
   );
 
   return <HabitDataContext.Provider value={value}>{children}</HabitDataContext.Provider>;

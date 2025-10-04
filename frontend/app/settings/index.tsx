@@ -27,6 +27,7 @@ export default function SettingsScreen() {
   const navigationState = useRootNavigationState();
   const {
     state: { status: authStatus },
+    logout,
   } = useAuth();
 
   useEffect(() => {
@@ -79,6 +80,18 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             ))}
           </View>
+
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={() => {
+              logout();
+              router.replace("/login");
+            }}
+            activeOpacity={0.85}
+          >
+            <Feather name="log-out" size={20} color="#f8fafc" />
+            <Text style={styles.logoutLabel}>Déconnexion</Text>
+          </TouchableOpacity>
         </ScrollView>
         <BottomNav />
       </View>
@@ -161,5 +174,22 @@ const styles = StyleSheet.create({
   cardDescription: {
     color: "#94a3b8",
     fontSize: 14,
+  },
+  logoutButton: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#ef4444",
+    backgroundColor: "#ef444422",
+  },
+  logoutLabel: {
+    color: "#f8fafc",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

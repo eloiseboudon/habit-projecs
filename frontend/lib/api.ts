@@ -6,6 +6,7 @@ import type {
   RegisterRequest,
   TaskListItem,
   TaskListResponse,
+  TaskTemplateItem,
   UpdateUserDomainSettingsRequest,
   UpdateUserProfileRequest,
   UserDomainSetting,
@@ -195,6 +196,46 @@ export async function completeTaskLog(
   if (!response.ok) {
     const message = await extractErrorMessage(response);
     throw new Error(message || "Impossible d'enregistrer la complétion de la tâche");
+  }
+}
+
+export async function fetchUserTaskTemplates(
+  userId: string,
+): Promise<TaskTemplateItem[]> {
+  const response = await fetch(`${API_URL}/users/${userId}/task-templates`, {
+    headers: buildJsonHeaders(),
+  });
+  return handleResponse<TaskTemplateItem[]>(response);
+}
+
+export async function enableUserTaskTemplate(
+  userId: string,
+  templateId: number,
+): Promise<TaskListItem> {
+  const response = await fetch(
+    `${API_URL}/users/${userId}/task-templates/${templateId}`,
+    {
+      method: "POST",
+      headers: buildJsonHeaders(),
+    },
+  );
+  return handleResponse<TaskListItem>(response);
+}
+
+export async function disableUserTaskTemplate(
+  userId: string,
+  templateId: number,
+): Promise<void> {
+  const response = await fetch(
+    `${API_URL}/users/${userId}/task-templates/${templateId}`,
+    {
+      method: "DELETE",
+      headers: buildJsonHeaders(),
+    },
+  );
+
+  if (!response.ok && response.status !== 204) {
+    throw new Error(await extractErrorMessage(response));
   }
 }
 

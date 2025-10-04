@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 import unicodedata
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -35,6 +35,7 @@ from ..schemas import (
     TaskCreate,
     TaskListItem,
     TaskListResponse,
+    TaskTemplateItem,
     UserDomainSettingItem,
     UserDomainSettingUpdateRequest,
     UserProfile,
@@ -80,6 +81,32 @@ def normalize_text(value: str) -> str:
     normalized = unicodedata.normalize("NFKD", value)
     without_diacritics = "".join(ch for ch in normalized if not unicodedata.combining(ch))
     return without_diacritics.lower().strip()
+
+
+def build_task_list_item(
+    user_task: UserTask,
+    domain: Domain,
+    template: TaskTemplate | None,
+    *,
+    completed_today: bool,
+) -> TaskListItem:
+    title = user_task.custom_title or (template.title if template else domain.name)
+    xp = (
+        user_task.custom_xp
+        if user_task.custom_xp is not None
+        else (template.default_xp if template else 0)
+    )
+
+    return TaskListItem(
+        id=user_task.id,
+        title=title,
+        domain_id=domain.id,
+        domain_key=domain.key,
+        domain_name=domain.name,
+        icon=domain.icon,
+        xp=xp,
+        completed_today=completed_today,
+    )
 
 
 def resolve_user(session: Session, user_id: UUID) -> User:
@@ -387,17 +414,11 @@ def list_tasks(user_id: UUID, session: Session = Depends(get_db_session)) -> Tas
 
     tasks: list[TaskListItem] = []
     for user_task, domain, template in session.execute(tasks_stmt):
-        title = user_task.custom_title or (template.title if template else domain.name)
-        xp = user_task.custom_xp or (template.default_xp if template else 0)
         tasks.append(
-            TaskListItem(
-                id=user_task.id,
-                title=title,
-                domain_id=domain.id,
-                domain_key=domain.key,
-                domain_name=domain.name,
-                icon=domain.icon,
-                xp=xp,
+            build_task_list_item(
+                user_task,
+                domain,
+                template,
                 completed_today=user_task.id in todays_logs,
             )
         )
@@ -455,16 +476,143 @@ def create_task(
     session.commit()
     session.refresh(user_task)
 
-    return TaskListItem(
-        id=user_task.id,
-        title=title,
-        domain_id=domain.id,
-        domain_key=domain.key,
-        domain_name=domain.name,
-        icon=domain.icon,
-        xp=payload.xp,
+    return build_task_list_item(
+        user_task,
+        domain,
+        None,
         completed_today=False,
     )
+
+
+@router.get("/{user_id}/task-templates", response_model=list[TaskTemplateItem])
+def list_task_templates(
+    user_id: UUID, session: Session = Depends(get_db_session)
+) -> list[TaskTemplateItem]:
+    user = resolve_user(session, user_id)
+
+    templates_stmt = (
+        select(TaskTemplate, Domain, UserTask.id)
+        .join(Domain, TaskTemplate.domain_id == Domain.id)
+        .outerjoin(
+            UserTask,
+            (
+                (UserTask.template_id == TaskTemplate.id)
+                & (UserTask.user_id == user.id)
+                & (UserTask.is_active.is_(True))
+            ),
+        )
+        .where(TaskTemplate.is_active.is_(True))
+        .order_by(Domain.order_index.asc(), TaskTemplate.title.asc())
+    )
+
+    templates: list[TaskTemplateItem] = []
+    for template, domain, user_task_id in session.execute(templates_stmt):
+        templates.append(
+            TaskTemplateItem(
+                id=template.id,
+                title=template.title,
+                domain_id=domain.id,
+                domain_key=domain.key,
+                domain_name=domain.name,
+                icon=domain.icon,
+                default_xp=template.default_xp,
+                default_points=template.default_points,
+                unit=template.unit,
+                is_enabled=user_task_id is not None,
+            )
+        )
+
+    return templates
+
+
+@router.post(
+    "/{user_id}/task-templates/{template_id}",
+    response_model=TaskListItem,
+    status_code=status.HTTP_201_CREATED,
+)
+def enable_task_template(
+    user_id: UUID, template_id: int, session: Session = Depends(get_db_session)
+) -> TaskListItem:
+    user = resolve_user(session, user_id)
+    template = session.get(TaskTemplate, template_id)
+    if not template or not template.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Modèle de tâche introuvable.",
+        )
+
+    domain = template.domain or session.get(Domain, template.domain_id)
+    if not domain:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Domaine associé au modèle introuvable.",
+        )
+
+    existing_stmt = (
+        select(UserTask)
+        .where(UserTask.user_id == user.id, UserTask.template_id == template.id)
+        .order_by(UserTask.created_at.desc())
+    )
+    existing = session.scalars(existing_stmt).first()
+
+    if existing:
+        if not existing.is_active:
+            existing.is_active = True
+            session.add(existing)
+            session.commit()
+            session.refresh(existing)
+        return build_task_list_item(existing, domain, template, completed_today=False)
+
+    user_task = UserTask(
+        user_id=user.id,
+        template_id=template.id,
+        domain_id=template.domain_id,
+        custom_title=None,
+        custom_xp=None,
+        custom_points=None,
+        is_active=True,
+        is_favorite=True,
+    )
+
+    session.add(user_task)
+    session.commit()
+    session.refresh(user_task)
+
+    return build_task_list_item(user_task, domain, template, completed_today=False)
+
+
+@router.delete(
+    "/{user_id}/task-templates/{template_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def disable_task_template(
+    user_id: UUID, template_id: int, session: Session = Depends(get_db_session)
+) -> Response:
+    user = resolve_user(session, user_id)
+
+    template = session.get(TaskTemplate, template_id)
+    if not template:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    existing_stmt = (
+        select(UserTask)
+        .where(
+            UserTask.user_id == user.id,
+            UserTask.template_id == template.id,
+            UserTask.is_active.is_(True),
+        )
+        .order_by(UserTask.created_at.desc())
+    )
+    user_task = session.scalars(existing_stmt).first()
+
+    if not user_task:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    user_task.is_active = False
+    session.add(user_task)
+    session.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{user_id}/progression", response_model=ProgressionResponse)

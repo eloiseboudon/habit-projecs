@@ -15,10 +15,10 @@ import {
 } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
-import BottomNav from "../components/BottomNav";
-import { CATEGORIES, CATEGORY_OPTIONS, type CategoryKey } from "../constants/categories";
-import { useAuth } from "../context/AuthContext";
-import { useHabitData } from "../context/HabitDataContext";
+import BottomNav from "../../components/BottomNav";
+import { CATEGORIES, CATEGORY_OPTIONS, type CategoryKey } from "../../constants/categories";
+import { useAuth } from "../../context/AuthContext";
+import { useHabitData } from "../../context/HabitDataContext";
 
 export default function QuestsScreen() {
   const router = useRouter();
@@ -380,6 +380,17 @@ export default function QuestsScreen() {
                     <Feather name="chevron-left" size={24} color="#f8fafc" />
                   </Pressable>
                   <Text style={styles.title}>Mes Quêtes du jour</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => router.push("/quests/catalogue")}
+                    style={({ pressed }) => [
+                      styles.catalogueButton,
+                      pressed && styles.catalogueButtonPressed,
+                    ]}
+                  >
+                    <Feather name="book-open" size={16} color="#f8fafc" />
+                    <Text style={styles.catalogueButtonLabel}>Catalogue</Text>
+                  </Pressable>
                 </View>
               </View>
             }
@@ -414,6 +425,7 @@ const styles = StyleSheet.create({
   headerTopRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     gap: 16,
   },
   backButton: {
@@ -430,6 +442,27 @@ const styles = StyleSheet.create({
     color: "#f8fafc",
     fontSize: 24,
     fontWeight: "700",
+    flex: 1,
+    textAlign: "center",
+  },
+  catalogueButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(79, 70, 229, 0.3)",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "rgba(129, 140, 248, 0.4)",
+  },
+  catalogueButtonPressed: {
+    backgroundColor: "rgba(79, 70, 229, 0.45)",
+  },
+  catalogueButtonLabel: {
+    color: "#f8fafc",
+    fontSize: 14,
+    fontWeight: "600",
   },
   taskCard: {
     flexDirection: "row",

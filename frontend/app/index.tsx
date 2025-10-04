@@ -26,10 +26,7 @@ const DOMAIN_COLORS: Record<string, string> = {
 export default function Index() {
   const router = useRouter();
   const navigationState = useRootNavigationState();
-  const {
-    state: authState,
-    logout,
-  } = useAuth();
+  const { state: authState } = useAuth();
   const {
     state: { status, dashboard, errorMessage },
     refresh,
@@ -171,17 +168,6 @@ export default function Index() {
                 <Feather name="settings" size={18} color="#f8fafc" />
                 <Text style={styles.settingsLabel}>Paramètres</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.logoutButton}
-                onPress={() => {
-                  logout();
-                  router.replace("/login");
-                }}
-              >
-                <Feather name="log-out" size={18} color="#f8fafc" />
-                <Text style={styles.logoutLabel}>Déconnexion</Text>
-              </TouchableOpacity>
             </View>
           </View>
           {renderContent()}
@@ -234,22 +220,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#161b2233",
   },
   settingsLabel: {
-    color: "#f8fafc",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  logoutButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#30363d",
-    backgroundColor: "#161b2233",
-  },
-  logoutLabel: {
     color: "#f8fafc",
     fontSize: 14,
     fontWeight: "600",

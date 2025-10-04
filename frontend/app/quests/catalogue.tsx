@@ -1,0 +1,321 @@
+import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import BottomNav from "../../components/BottomNav";
+import { useHabitData } from "../../context/HabitDataContext";
+import { fetchUserTaskTemplates } from "../../lib/api";
+import type { TaskTemplateItem } from "../../types/api";
+
+export default function TaskCatalogueScreen() {
+  const router = useRouter();
+  const {
+    state: { user },
+    enableTaskTemplate,
+    disableTaskTemplate,
+  } = useHabitData();
+
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [templates, setTemplates] = useState<TaskTemplateItem[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pendingTemplateId, setPendingTemplateId] = useState<number | null>(null);
+
+  const userId = user?.id ?? null;
+
+  const loadTemplates = useCallback(
+    async (mode: "full" | "refresh" = "full") => {
+      if (!userId) {
+        return;
+      }
+
+      if (mode === "refresh") {
+        setIsRefreshing(true);
+      } else {
+        setStatus("loading");
+      }
+      setErrorMessage(null);
+
+      try {
+        const data = await fetchUserTaskTemplates(userId);
+        setTemplates(data);
+        setStatus("ready");
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Impossible de charger le catalogue des quêtes.";
+        setErrorMessage(message);
+        setStatus("error");
+      } finally {
+        setIsRefreshing(false);
+      }
+    },
+    [userId],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) {
+        return;
+      }
+      void loadTemplates("full");
+    }, [loadTemplates, userId]),
+  );
+
+  const handleToggleTemplate = useCallback(
+    async (template: TaskTemplateItem, nextValue: boolean) => {
+      if (!userId || pendingTemplateId !== null) {
+        return;
+      }
+
+      setPendingTemplateId(template.id);
+      try {
+        if (nextValue) {
+          await enableTaskTemplate(template.id);
+        } else {
+          await disableTaskTemplate(template.id);
+        }
+        await loadTemplates("refresh");
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Impossible de mettre à jour cette quête.";
+        Alert.alert("Erreur", message);
+      } finally {
+        setPendingTemplateId(null);
+      }
+    },
+    [disableTaskTemplate, enableTaskTemplate, loadTemplates, pendingTemplateId, userId],
+  );
+
+  const renderTemplateItem = useCallback(
+    ({ item }: { item: TaskTemplateItem }) => {
+      const icon = item.icon ?? "⭐";
+      const isBusy = pendingTemplateId === item.id;
+
+      return (
+        <View style={styles.card}>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardTitle}>{item.title}</Text>
+            <View style={styles.cardMetaRow}>
+              <Text style={styles.cardMeta}>
+                {icon} {item.domain_name}
+              </Text>
+              <Text style={styles.cardMeta}>+{item.default_xp} XP</Text>
+            </View>
+            {item.unit && <Text style={styles.cardUnit}>Unité : {item.unit}</Text>}
+          </View>
+          <View style={styles.cardAction}>
+            {isBusy ? (
+              <ActivityIndicator size="small" color="#f8fafc" />
+            ) : (
+              <Switch
+                value={item.is_enabled}
+                onValueChange={(value) => handleToggleTemplate(item, value)}
+                disabled={pendingTemplateId !== null}
+                trackColor={{ false: "#475569", true: "#7c3aed" }}
+                thumbColor={item.is_enabled ? "#f8fafc" : "#cbd5f5"}
+              />
+            )}
+          </View>
+        </View>
+      );
+    },
+    [handleToggleTemplate, pendingTemplateId],
+  );
+
+  const listEmptyComponent = useMemo(() => {
+    if (status === "loading") {
+      return (
+        <View style={styles.emptyState}>
+          <ActivityIndicator size="large" color="#6366f1" />
+          <Text style={styles.emptyStateLabel}>Chargement du catalogue…</Text>
+        </View>
+      );
+    }
+
+    if (status === "error") {
+      return (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateLabel}>{errorMessage ?? "Catalogue indisponible."}</Text>
+          <Pressable style={styles.retryButton} onPress={() => loadTemplates("full")}>
+            <Text style={styles.retryButtonLabel}>Réessayer</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.emptyState}>
+        <Text style={styles.emptyStateLabel}>Aucun modèle de quête disponible.</Text>
+      </View>
+    );
+  }, [errorMessage, loadTemplates, status]);
+
+  return (
+    <LinearGradient
+      colors={["#111827", "#111827", "#1f2937"]}
+      style={styles.gradientBackground}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.screen}>
+          <FlatList
+            data={templates}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderTemplateItem}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={listEmptyComponent}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={() => loadTemplates("refresh")}
+                tintColor="#818cf8"
+              />
+            }
+            ListHeaderComponent={
+              <View style={styles.headerContainer}>
+                <View style={styles.headerTopRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => router.back()}
+                    style={styles.backButton}
+                  >
+                    <Feather name="chevron-left" size={24} color="#f8fafc" />
+                  </Pressable>
+                  <Text style={styles.title}>Catalogue des quêtes</Text>
+                </View>
+                <Text style={styles.subtitle}>
+                  Activez les quêtes préconfigurées pour les ajouter instantanément à votre journal.
+                </Text>
+              </View>
+            }
+          />
+          <BottomNav />
+        </View>
+      </SafeAreaView>
+    </LinearGradient>
+  );
+}
+
+const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  screen: {
+    flex: 1,
+    position: "relative",
+  },
+  headerContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(148, 163, 184, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  title: {
+    color: "#f8fafc",
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  subtitle: {
+    color: "#cbd5f5",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 120,
+  },
+  card: {
+    backgroundColor: "rgba(30, 41, 59, 0.9)",
+    borderRadius: 18,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(99, 102, 241, 0.3)",
+  },
+  cardContent: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  cardTitle: {
+    color: "#f8fafc",
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  cardMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  cardMeta: {
+    color: "#cbd5f5",
+    fontSize: 13,
+  },
+  cardUnit: {
+    color: "#94a3b8",
+    fontSize: 12,
+  },
+  cardAction: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyState: {
+    paddingVertical: 80,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  emptyStateLabel: {
+    color: "#e2e8f0",
+    textAlign: "center",
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  retryButton: {
+    backgroundColor: "rgba(99, 102, 241, 0.25)",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  retryButtonLabel: {
+    color: "#cbd5f5",
+    fontWeight: "600",
+  },
+});

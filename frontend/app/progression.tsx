@@ -118,31 +118,7 @@ export default function ProgressionScreen() {
                   Suivez l’impact de vos habitudes et découvrez les récompenses débloquées.
                 </Text>
 
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Historique récent</Text>
-                  {historyItems.length === 0 ? (
-                    <Text style={styles.emptyText}>Aucun log enregistré récemment.</Text>
-                  ) : (
-                    historyItems.map((item) => {
-                      const category = CATEGORIES[item.domain_key as CategoryKey] ?? null;
-                      const icon = item.icon ?? category?.icon ?? "⭐";
-                      return (
-                        <View key={item.id} style={styles.historyItem}>
-                          <View style={styles.historyIconWrapper}>
-                            <Text style={styles.historyIcon}>{icon}</Text>
-                          </View>
-                          <View style={styles.historyContent}>
-                            <Text style={styles.historyAction}>{item.title}</Text>
-                            <Text style={styles.historyDate}>{formatHistoryDate(item.occurred_at)}</Text>
-                          </View>
-                          <Text style={styles.historyXp}>+{item.xp_awarded} XP</Text>
-                        </View>
-                      );
-                    })
-                  )}
-                </View>
-
-                <View style={styles.card}>
+                <View style={[styles.card, styles.blockSpacing]}>
                   <Text style={styles.cardTitle}>Statistiques hebdo</Text>
                   {weeklyStats.length === 0 ? (
                     <Text style={styles.emptyText}>Aucune donnée pour cette semaine.</Text>
@@ -165,7 +141,7 @@ export default function ProgressionScreen() {
                   )}
                 </View>
 
-                <View style={styles.badgeCard}>
+                <View style={[styles.badgeCard, styles.blockSpacing]}>
                   <Text style={styles.badgeCardTitle}>Badges débloqués</Text>
                   {badges.length === 0 ? (
                     <Text style={styles.emptyText}>Continuez à progresser pour débloquer vos premiers badges !</Text>
@@ -179,6 +155,30 @@ export default function ProgressionScreen() {
                         </View>
                       </View>
                     ))
+                  )}
+                </View>
+
+                <View style={[styles.card, styles.blockSpacing]}>
+                  <Text style={styles.cardTitle}>Historique récent</Text>
+                  {historyItems.length === 0 ? (
+                    <Text style={styles.emptyText}>Aucun log enregistré récemment.</Text>
+                  ) : (
+                    historyItems.map((item) => {
+                      const category = CATEGORIES[item.domain_key as CategoryKey] ?? null;
+                      const icon = item.icon ?? category?.icon ?? "⭐";
+                      return (
+                        <View key={item.id} style={styles.historyItem}>
+                          <View style={styles.historyIconWrapper}>
+                            <Text style={styles.historyIcon}>{icon}</Text>
+                          </View>
+                          <View style={styles.historyContent}>
+                            <Text style={styles.historyAction}>{item.title}</Text>
+                            <Text style={styles.historyDate}>{formatHistoryDate(item.occurred_at)}</Text>
+                          </View>
+                          <Text style={styles.historyXp}>+{item.xp_awarded} XP</Text>
+                        </View>
+                      );
+                    })
                   )}
                 </View>
               </>
@@ -241,6 +241,9 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 22,
     gap: 18,
+  },
+  blockSpacing: {
+    marginBottom: 24,
   },
   cardTitle: {
     color: "#c4b5fd",

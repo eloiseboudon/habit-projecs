@@ -1,16 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as FileSystem from "expo-file-system/legacy";
 
-import type { AvatarType } from "../types/api";
-
-type DiceBearConfig = { style: string };
-
-const DICEBEAR_CONFIG: Record<AvatarType, DiceBearConfig> = {
-  explorateur: { style: "adventurer" },
-  batisseur: { style: "lorelei-neutral" },
-  moine: { style: "notionists-neutral" },
-  guerrier: { style: "micah" },
-};
+import type { AvatarStyle } from "../types/api";
+import { DEFAULT_DICEBEAR_STYLE, isValidDiceBearStyle } from "../constants/dicebearStyles";
 
 const BASE_OPTIONS: Record<string, string> = {
   size: "256",
@@ -44,26 +36,30 @@ async function ensureCacheDirectory(): Promise<void> {
   }
 }
 
-function getCacheKey(type: AvatarType, seed: string): string {
-  return `${type}-${seed}`;
+function normalizeStyle(style: string | null | undefined): AvatarStyle {
+  return isValidDiceBearStyle(style) ? style : DEFAULT_DICEBEAR_STYLE;
 }
 
-function getCachePath(type: AvatarType, seed: string): string | null {
+function getCacheKey(style: AvatarStyle, seed: string): string {
+  return `${style}-${seed}`;
+}
+
+function getCachePath(style: AvatarStyle, seed: string): string | null {
   if (!CACHE_DIRECTORY) {
     return null;
   }
 
   const sanitizedSeed = seed.replace(/[^a-zA-Z0-9-_]/g, "_");
-  return `${CACHE_DIRECTORY}${type}-${sanitizedSeed}.png`;
+  return `${CACHE_DIRECTORY}${style}-${sanitizedSeed}.png`;
 }
 
-async function readFromCache(type: AvatarType, seed: string): Promise<string | null> {
-  const cacheKey = getCacheKey(type, seed);
+async function readFromCache(style: AvatarStyle, seed: string): Promise<string | null> {
+  const cacheKey = getCacheKey(style, seed);
   if (MEMORY_CACHE.has(cacheKey)) {
     return MEMORY_CACHE.get(cacheKey) ?? null;
   }
 
-  const cachePath = getCachePath(type, seed);
+  const cachePath = getCachePath(style, seed);
   if (!cachePath) {
     return null;
   }
@@ -82,14 +78,13 @@ async function readFromCache(type: AvatarType, seed: string): Promise<string | n
   }
 }
 
-function buildDiceBearUrl(type: AvatarType, seed: string): string {
-  const config = DICEBEAR_CONFIG[type] ?? DICEBEAR_CONFIG.explorateur;
+function buildDiceBearUrl(style: AvatarStyle, seed: string): string {
   const params = new URLSearchParams({ ...BASE_OPTIONS, seed });
-  return `https://api.dicebear.com/9.x/${config.style}/png?${params.toString()}`;
+  return `https://api.dicebear.com/9.x/${style}/png?${params.toString()}`;
 }
 
-async function downloadDiceBearAvatar(type: AvatarType, seed: string): Promise<string> {
-  const cachePath = getCachePath(type, seed);
+async function downloadDiceBearAvatar(style: AvatarStyle, seed: string): Promise<string> {
+  const cachePath = getCachePath(style, seed);
   if (!cachePath) {
     throw new Error("Aucun répertoire de cache disponible pour les avatars DiceBear.");
   }
@@ -97,10 +92,10 @@ async function downloadDiceBearAvatar(type: AvatarType, seed: string): Promise<s
   await ensureCacheDirectory();
 
   try {
-    const result = await FileSystem.downloadAsync(buildDiceBearUrl(type, seed), cachePath, {
+    const result = await FileSystem.downloadAsync(buildDiceBearUrl(style, seed), cachePath, {
       cache: false,
     });
-    const cacheKey = getCacheKey(type, seed);
+    const cacheKey = getCacheKey(style, seed);
     MEMORY_CACHE.set(cacheKey, result.uri);
     return result.uri;
   } catch (error) {
@@ -116,15 +111,21 @@ export type UseDiceBearAvatarResult = {
   error: Error | null;
 };
 
-export function useDiceBearAvatar(type: AvatarType, seed: string | null | undefined): UseDiceBearAvatarResult {
+export function useDiceBearAvatar(
+  style: string | null | undefined,
+  seed: string | null | undefined,
+): UseDiceBearAvatarResult {
+  const normalizedStyle = normalizeStyle(style);
   const normalizedSeed = seed && seed.trim().length > 0 ? seed : "default";
-  const cacheKeyRef = useRef<string>(getCacheKey(type, normalizedSeed));
+  const cacheKeyRef = useRef<string>(getCacheKey(normalizedStyle, normalizedSeed));
   const [uri, setUri] = useState<string | null>(() => MEMORY_CACHE.get(cacheKeyRef.current) ?? null);
   const [isLoading, setIsLoading] = useState<boolean>(() => !MEMORY_CACHE.has(cacheKeyRef.current));
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    const nextKey = getCacheKey(type, normalizedSeed);
+    const nextStyle = normalizeStyle(style);
+    const nextSeed = seed && seed.trim().length > 0 ? seed : "default";
+    const nextKey = getCacheKey(nextStyle, nextSeed);
     cacheKeyRef.current = nextKey;
 
     const cachedValue = MEMORY_CACHE.get(nextKey) ?? null;
@@ -139,7 +140,7 @@ export function useDiceBearAvatar(type: AvatarType, seed: string | null | undefi
         return;
       }
 
-      const cachedUri = await readFromCache(type, normalizedSeed);
+      const cachedUri = await readFromCache(nextStyle, nextSeed);
       if (!isMounted) {
         return;
       }
@@ -152,7 +153,7 @@ export function useDiceBearAvatar(type: AvatarType, seed: string | null | undefi
 
       try {
         setIsLoading(true);
-        const downloadedUri = await downloadDiceBearAvatar(type, normalizedSeed);
+        const downloadedUri = await downloadDiceBearAvatar(nextStyle, nextSeed);
         if (!isMounted) {
           return;
         }
@@ -172,7 +173,7 @@ export function useDiceBearAvatar(type: AvatarType, seed: string | null | undefi
     return () => {
       isMounted = false;
     };
-  }, [type, normalizedSeed]);
+  }, [style, seed]);
 
   return { uri, isLoading, error };
 }

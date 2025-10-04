@@ -31,7 +31,7 @@ export type DashboardResponse = {
   level: number;
   current_xp: number;
   xp_to_next: number;
-  avatar_type: AvatarType;
+  avatar_style: AvatarStyle;
   domain_stats: DashboardDomainStat[];
 };
 
@@ -121,7 +121,37 @@ export type UpdateUserDomainSettingsRequest = {
   }[];
 };
 
-export type AvatarType = "explorateur" | "batisseur" | "moine" | "guerrier";
+export type AvatarStyle =
+  | "adventurer"
+  | "adventurer-neutral"
+  | "avataaars"
+  | "avataaars-neutral"
+  | "big-ears"
+  | "big-ears-neutral"
+  | "big-smile"
+  | "bottts"
+  | "bottts-neutral"
+  | "croodles"
+  | "croodles-neutral"
+  | "dylan"
+  | "fun-emoji"
+  | "glass"
+  | "icons"
+  | "identicon"
+  | "initials"
+  | "lorelei"
+  | "lorelei-neutral"
+  | "micah"
+  | "miniavs"
+  | "notionists"
+  | "notionists-neutral"
+  | "open-peeps"
+  | "personas"
+  | "pixel-art"
+  | "pixel-art-neutral"
+  | "rings"
+  | "shapes"
+  | "thumbs";
 
 export type UserProfile = {
   display_name: string;
@@ -130,7 +160,7 @@ export type UserProfile = {
   language: string;
   notifications_enabled: boolean;
   first_day_of_week: number;
-  avatar_type: AvatarType;
+  avatar_style: AvatarStyle;
 };
 
 export type UpdateUserProfileRequest = UserProfile;

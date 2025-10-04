@@ -2,18 +2,18 @@ import type { ReactNode } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 
-import type { AvatarType } from "../types/api";
+import type { AvatarStyle } from "../types/api";
 import { useDiceBearAvatar } from "../lib/dicebear";
 
 type DiceBearAvatarProps = {
-  type: AvatarType;
+  style: AvatarStyle | string | null | undefined;
   seed: string | null | undefined;
   size?: number;
   fallback?: ReactNode;
 };
 
-export default function DiceBearAvatar({ type, seed, size = 120, fallback }: DiceBearAvatarProps) {
-  const { uri, isLoading } = useDiceBearAvatar(type, seed);
+export default function DiceBearAvatar({ style, seed, size = 120, fallback }: DiceBearAvatarProps) {
+  const { uri, isLoading } = useDiceBearAvatar(style, seed);
 
   if (uri) {
     return <Image source={{ uri }} style={{ width: size, height: size }} contentFit="contain" />;

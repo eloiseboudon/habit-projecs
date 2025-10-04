@@ -409,7 +409,7 @@ class UserSettings(Base):
     language: Mapped[str] = mapped_column(String(10), nullable=False, default="fr")
     notifications_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     first_day_of_week: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    avatar_type: Mapped[str] = mapped_column(String(30), nullable=False, default="explorateur")
+    avatar_type: Mapped[str] = mapped_column(String(30), nullable=False, default="adventurer")
 
     user: Mapped[User] = relationship("User", back_populates="user_settings")
 

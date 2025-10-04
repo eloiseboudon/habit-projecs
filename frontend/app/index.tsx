@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import BottomNav from "../components/BottomNav";
 import DiceBearAvatar from "../components/DiceBearAvatar";
-import { getAvatarOption } from "../constants/avatarTypes";
+import { getDiceBearStyleOption } from "../constants/dicebearStyles";
 import { useAuth } from "../context/AuthContext";
 import { useHabitData } from "../context/HabitDataContext";
 
@@ -69,9 +69,9 @@ export default function Index() {
     }
 
     const statsToDisplay = dashboard.domain_stats;
-    const avatarOption = getAvatarOption(dashboard.avatar_type);
-    const avatarBackground = avatarOption.colors[0] ?? "#1f2937";
-    const avatarAccent = avatarOption.colors[1] ?? "#38bdf8";
+    const avatarOption = getDiceBearStyleOption(dashboard.avatar_style);
+    const avatarBackground = avatarOption.backgroundColor;
+    const avatarAccent = avatarOption.accentColor;
     const avatarSeed = dashboard.user_id;
 
     if (statsToDisplay.length === 0) {
@@ -89,7 +89,7 @@ export default function Index() {
         <View style={styles.avatarContainer}>
           <View style={[styles.avatar, { backgroundColor: avatarBackground, borderColor: avatarAccent }]}>
             <DiceBearAvatar
-              type={dashboard.avatar_type}
+              style={dashboard.avatar_style}
               seed={avatarSeed}
               size={68}
               fallback={<Text style={styles.avatarInitials}>{dashboard.initials}</Text>}
@@ -98,9 +98,7 @@ export default function Index() {
           <View style={styles.avatarDetails}>
             <Text style={styles.displayName}>{dashboard.display_name}</Text>
             <Text style={[styles.avatarType, { color: avatarAccent }]}>{avatarOption.label}</Text>
-            {avatarOption.tagline ? (
-              <Text style={styles.avatarTagline}>{avatarOption.tagline}</Text>
-            ) : null}
+            <Text style={styles.avatarTagline}>{avatarOption.description}</Text>
             <Text style={styles.levelLabel}>Niveau {dashboard.level}</Text>
             <Text style={styles.xpText}>
               {dashboard.current_xp} XP / {dashboard.xp_to_next} XP

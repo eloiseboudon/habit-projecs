@@ -64,6 +64,13 @@ export default function ProgressionScreen() {
 
   const historyItems = useMemo(() => progression?.recent_history ?? [], [progression]);
   const weeklyStats = useMemo(() => progression?.weekly_stats ?? [], [progression]);
+  const weeklyStatRows = useMemo(() => {
+    const rows: typeof weeklyStats[] = [];
+    for (let index = 0; index < weeklyStats.length; index += 2) {
+      rows.push(weeklyStats.slice(index, index + 2));
+    }
+    return rows;
+  }, [weeklyStats]);
   const badges = useMemo(() => progression?.badges ?? [], [progression]);
 
   if ((status === "loading" || status === "idle") && !progression) {
@@ -118,7 +125,52 @@ export default function ProgressionScreen() {
                   Suivez l’impact de vos habitudes et découvrez les récompenses débloquées.
                 </Text>
 
-                <View style={styles.card}>
+                <View style={[styles.card, styles.blockSpacing]}>
+                  <Text style={styles.cardTitle}>Statistiques hebdo</Text>
+                  {weeklyStats.length === 0 ? (
+                    <Text style={styles.emptyText}>Aucune donnée pour cette semaine.</Text>
+                  ) : (
+                    <View style={styles.statsGrid}>
+                      {weeklyStatRows.map((row, rowIndex) => (
+                        <View key={`weekly-row-${rowIndex}`} style={styles.statRow}>
+                          {row.map((stat) => {
+                            const category = CATEGORIES[stat.domain_key as CategoryKey] ?? null;
+                            const icon = stat.icon ?? category?.icon ?? "📈";
+                            const label = category?.label ?? stat.domain_name;
+                            return (
+                              <View key={stat.domain_id} style={styles.statCard}>
+                                <Text style={styles.statIcon}>{icon}</Text>
+                                <Text style={styles.statLabel}>{label}</Text>
+                                <Text style={styles.statHighlight}>+{stat.weekly_xp} XP</Text>
+                                <Text style={styles.statSubHighlight}>{stat.weekly_points} pts</Text>
+                              </View>
+                            );
+                          })}
+                          {row.length === 1 ? <View style={styles.statCardPlaceholder} /> : null}
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                <View style={[styles.badgeCard, styles.blockSpacing]}>
+                  <Text style={styles.badgeCardTitle}>Badges débloqués</Text>
+                  {badges.length === 0 ? (
+                    <Text style={styles.emptyText}>Continuez à progresser pour débloquer vos premiers badges !</Text>
+                  ) : (
+                    badges.map((badge) => (
+                      <View key={badge.id} style={styles.badgeRow}>
+                        <Text style={styles.badgeIcon}>🏆</Text>
+                        <View style={styles.badgeContent}>
+                          <Text style={styles.badgeTitle}>{badge.title}</Text>
+                          <Text style={styles.badgeSubtitle}>{badge.subtitle}</Text>
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </View>
+
+                <View style={[styles.card, styles.blockSpacing]}>
                   <Text style={styles.cardTitle}>Historique récent</Text>
                   {historyItems.length === 0 ? (
                     <Text style={styles.emptyText}>Aucun log enregistré récemment.</Text>
@@ -139,46 +191,6 @@ export default function ProgressionScreen() {
                         </View>
                       );
                     })
-                  )}
-                </View>
-
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Statistiques hebdo</Text>
-                  {weeklyStats.length === 0 ? (
-                    <Text style={styles.emptyText}>Aucune donnée pour cette semaine.</Text>
-                  ) : (
-                    <View style={styles.statsGrid}>
-                      {weeklyStats.map((stat) => {
-                        const category = CATEGORIES[stat.domain_key as CategoryKey] ?? null;
-                        const icon = stat.icon ?? category?.icon ?? "📈";
-                        const label = category?.label ?? stat.domain_name;
-                        return (
-                          <View key={stat.domain_id} style={styles.statCard}>
-                            <Text style={styles.statIcon}>{icon}</Text>
-                            <Text style={styles.statLabel}>{label}</Text>
-                            <Text style={styles.statHighlight}>+{stat.weekly_xp} XP</Text>
-                            <Text style={styles.statSubHighlight}>{stat.weekly_points} pts</Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.badgeCard}>
-                  <Text style={styles.badgeCardTitle}>Badges débloqués</Text>
-                  {badges.length === 0 ? (
-                    <Text style={styles.emptyText}>Continuez à progresser pour débloquer vos premiers badges !</Text>
-                  ) : (
-                    badges.map((badge) => (
-                      <View key={badge.id} style={styles.badgeRow}>
-                        <Text style={styles.badgeIcon}>🏆</Text>
-                        <View style={styles.badgeContent}>
-                          <Text style={styles.badgeTitle}>{badge.title}</Text>
-                          <Text style={styles.badgeSubtitle}>{badge.subtitle}</Text>
-                        </View>
-                      </View>
-                    ))
                   )}
                 </View>
               </>
@@ -242,24 +254,33 @@ const styles = StyleSheet.create({
     padding: 22,
     gap: 18,
   },
+  blockSpacing: {
+    marginBottom: 24,
+  },
   cardTitle: {
     color: "#c4b5fd",
     fontSize: 18,
     fontWeight: "700",
   },
   statsGrid: {
+    gap: 14,
+  },
+  statRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: 14,
   },
   statCard: {
-    flexBasis: "48%",
+    flex: 1,
     backgroundColor: "rgba(17, 24, 39, 0.6)",
     borderRadius: 18,
     borderWidth: 1,
     borderColor: "rgba(147, 197, 253, 0.2)",
     padding: 16,
     gap: 6,
+  },
+  statCardPlaceholder: {
+    flex: 1,
+    opacity: 0,
   },
   statIcon: {
     fontSize: 26,

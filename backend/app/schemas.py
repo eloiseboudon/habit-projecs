@@ -193,6 +193,19 @@ class TaskCreate(BaseModel):
     xp: int = Field(default=10, ge=0, le=10000)
 
 
+class TaskTemplateItem(BaseModel):
+    id: int
+    title: str
+    domain_id: int
+    domain_key: str
+    domain_name: str
+    icon: Optional[str]
+    default_xp: int
+    default_points: int
+    unit: Optional[str]
+    is_enabled: bool
+
+
 class HistoryItem(BaseModel):
     id: UUID
     title: str

@@ -56,6 +56,19 @@ export type CreateTaskRequest = {
   xp: number;
 };
 
+export type TaskTemplateItem = {
+  id: number;
+  title: string;
+  domain_id: number;
+  domain_key: string;
+  domain_name: string;
+  icon: string | null;
+  default_xp: number;
+  default_points: number;
+  unit: string | null;
+  is_enabled: boolean;
+};
+
 export type HistoryItem = {
   id: string;
   title: string;

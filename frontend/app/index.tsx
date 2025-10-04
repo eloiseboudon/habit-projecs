@@ -252,17 +252,18 @@ const styles = StyleSheet.create({
   avatar: {
     width: 72,
     height: 72,
-    borderRadius: 36,
+    borderRadius: 48,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "#1f6feb",
+    padding: 2,
     overflow: "hidden",
   },
   avatarImage: {
-    width: "110%",
-    height: "110%",
-    transform: [{ scale: 1.15 }],
+    width: "180%",
+    height: "180%",
+    transform: [{ scale: 1.1 }],
   },
   avatarInitials: {
     color: "white",

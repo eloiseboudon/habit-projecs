@@ -13,6 +13,13 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     };
   }
 
+  if (moduleName === 'three/examples/js/loaders/PCDLoader') {
+    return {
+      type: 'sourceFile',
+      filePath: path.resolve(__dirname, 'lib/shims/PCDLoader.js'),
+    };
+  }
+
   if (previousResolveRequest) {
     return previousResolveRequest(context, moduleName, platform);
   }

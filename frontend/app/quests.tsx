@@ -1,11 +1,11 @@
 import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRootNavigationState, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -35,11 +35,11 @@ export default function QuestsScreen() {
   } = useHabitData();
   const defaultCategory = (CATEGORY_OPTIONS[0] ?? "health") as CategoryKey;
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
-  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
   const [newQuestTitle, setNewQuestTitle] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<CategoryKey>(defaultCategory);
-  const [newQuestXp, setNewQuestXp] = useState("10");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const defaultXpReward = 10;
 
   useEffect(() => {
     if (!navigationState?.key) {
@@ -107,15 +107,7 @@ export default function QuestsScreen() {
 
   const resetForm = () => {
     setNewQuestTitle("");
-    setNewQuestXp("10");
     setSelectedCategory(defaultCategory);
-  };
-
-  const handleCloseModal = () => {
-    if (!isSubmitting) {
-      setIsAddModalVisible(false);
-      resetForm();
-    }
   };
 
   const handleCreateTaskSubmit = async () => {
@@ -125,33 +117,16 @@ export default function QuestsScreen() {
       return;
     }
 
-    const xpValue = Number.parseInt(newQuestXp, 10);
-    if (Number.isNaN(xpValue) || xpValue < 0) {
-      Alert.alert(
-        "Récompense invalide",
-        "Veuillez indiquer un nombre de points d'expérience positif.",
-      );
-      return;
-    }
-
-    if (xpValue > 10000) {
-      Alert.alert(
-        "Récompense trop élevée",
-        "Veuillez choisir une récompense inférieure ou égale à 10 000 XP.",
-      );
-      return;
-    }
-
     try {
       setIsSubmitting(true);
       const domainKeyToSend = domainKeyOverrides.get(selectedCategory) ?? selectedCategory;
       await createTask({
         title,
         domain_key: domainKeyToSend,
-        xp: xpValue,
+        xp: defaultXpReward,
       });
       resetForm();
-      setIsAddModalVisible(false);
+      setShowAddTask(false);
     } catch (error) {
       const message =
         error instanceof Error
@@ -247,226 +222,228 @@ export default function QuestsScreen() {
         <Text style={styles.emptyStateLabel}>Aucune quête pour le moment.</Text>
         <Pressable
           style={[
-            styles.primaryButton,
-            styles.emptyStateButton,
-            isSubmitting && styles.primaryButtonDisabled,
+            styles.addTaskButton,
+            isSubmitting && styles.addTaskButtonDisabled,
           ]}
           onPress={() => {
             resetForm();
-            setIsAddModalVisible(true);
+            setShowAddTask(true);
           }}
           disabled={isSubmitting}
         >
-          <Text style={styles.primaryButtonLabel}>Ajouter une quête</Text>
+          <LinearGradient
+            colors={["#7c3aed", "#ec4899"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.addTaskGradient}
+          >
+            <Feather name="plus" size={20} color="#f8fafc" />
+            <Text style={styles.addTaskButtonLabel}>Ajouter une quête</Text>
+          </LinearGradient>
         </Pressable>
       </View>
     );
   };
 
+  const renderAddSection = () => (
+    <View style={styles.addSection}>
+      {!showAddTask ? (
+        <Pressable
+          style={({ pressed }) => [
+            styles.addTaskButton,
+            pressed && styles.addTaskButtonPressed,
+          ]}
+          onPress={() => {
+            resetForm();
+            setShowAddTask(true);
+          }}
+          disabled={isSubmitting}
+        >
+          <LinearGradient
+            colors={["#7c3aed", "#ec4899"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.addTaskGradient}
+          >
+            <Feather name="plus" size={20} color="#f8fafc" />
+            <Text style={styles.addTaskButtonLabel}>Ajouter une tâche</Text>
+          </LinearGradient>
+        </Pressable>
+      ) : (
+        <View style={styles.addFormCard}>
+          <Text style={styles.addFormTitle}>Nouvelle tâche</Text>
+
+          <Text style={styles.formLabel}>Catégorie</Text>
+          <View style={styles.categoryOptions}>
+            {CATEGORY_OPTIONS.map((key) => {
+              const category = CATEGORIES[key];
+              const isSelected = selectedCategory === key;
+              return (
+                <Pressable
+                  key={key}
+                  style={[styles.categoryOption, isSelected && styles.categoryOptionSelected]}
+                  onPress={() => setSelectedCategory(key)}
+                  disabled={isSubmitting}
+                >
+                  <Text
+                    style={[
+                      styles.categoryOptionLabel,
+                      isSelected && styles.categoryOptionLabelSelected,
+                    ]}
+                  >
+                    {category.icon} {category.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.formLabel}>Action</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex: Méditer 10 minutes"
+            placeholderTextColor="#64748b"
+            value={newQuestTitle}
+            onChangeText={setNewQuestTitle}
+            editable={!isSubmitting}
+          />
+
+          <View style={styles.addFormActions}>
+            <Pressable
+              style={[styles.secondaryButton, isSubmitting && styles.secondaryButtonDisabled]}
+              onPress={() => {
+                if (!isSubmitting) {
+                  setShowAddTask(false);
+                  resetForm();
+                }
+              }}
+              disabled={isSubmitting}
+            >
+              <Text style={styles.secondaryButtonLabel}>Annuler</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.confirmButton,
+                pressed && styles.confirmButtonPressed,
+                isSubmitting && styles.confirmButtonDisabled,
+              ]}
+              onPress={handleCreateTaskSubmit}
+              disabled={isSubmitting}
+            >
+              <LinearGradient
+                colors={["#7c3aed", "#ec4899"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.confirmGradient}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color="#f8fafc" />
+                ) : (
+                  <Text style={styles.confirmButtonLabel}>Valider</Text>
+                )}
+              </LinearGradient>
+            </Pressable>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.screen}>
-        <FlatList
-          data={questItems}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          ListEmptyComponent={ListEmptyComponent}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={isRefreshing} onRefresh={() => refresh()} tintColor="#58a6ff" />
-          }
-          ListHeaderComponent={
-            <View style={styles.headerContainer}>
-              <View style={styles.headerTopRow}>
-                <View style={styles.headerTitleRow}>
+    <LinearGradient
+      colors={["#111827", "#111827", "#1f2937"]}
+      style={styles.gradientBackground}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.screen}>
+          <FlatList
+            data={questItems}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            ListEmptyComponent={ListEmptyComponent}
+            ListFooterComponent={renderAddSection}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={isRefreshing} onRefresh={() => refresh()} tintColor="#818cf8" />
+            }
+            ListHeaderComponent={
+              <View style={styles.headerContainer}>
+                <View style={styles.headerTopRow}>
                   <Pressable
                     accessibilityRole="button"
                     onPress={() => router.push("/")}
                     style={styles.backButton}
                   >
-                    <Feather name="chevron-left" size={22} color="#e5e7eb" />
+                    <Feather name="chevron-left" size={24} color="#f8fafc" />
                   </Pressable>
                   <Text style={styles.title}>Mes Quêtes du jour</Text>
                 </View>
-                <Pressable
-                  accessibilityRole="button"
-                  style={styles.addButton}
-                  onPress={() => {
-                    resetForm();
-                    setIsAddModalVisible(true);
-                  }}
-                >
-                  <Feather name="plus" size={20} color="#0f172a" />
-                </Pressable>
               </View>
-              <Text style={styles.headerSubtitle}>
-                Ajoutez de nouvelles quêtes pour continuer à progresser !
-              </Text>
-            </View>
-          }
-        />
-        <Modal
-          visible={isAddModalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={handleCloseModal}
-        >
-          <View style={styles.modalBackdrop}>
-            <Pressable style={styles.modalOverlay} onPress={handleCloseModal} />
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Nouvelle quête</Text>
-
-              <Text style={styles.modalLabel}>Titre</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: Courir 5 km"
-                placeholderTextColor="#94a3b8"
-                value={newQuestTitle}
-                onChangeText={setNewQuestTitle}
-                editable={!isSubmitting}
-              />
-
-              <Text style={styles.modalLabel}>Catégorie</Text>
-              <View style={styles.categoryOptions}>
-                {CATEGORY_OPTIONS.map((key) => {
-                  const category = CATEGORIES[key];
-                  const isSelected = selectedCategory === key;
-                  return (
-                    <Pressable
-                      key={key}
-                      style={[
-                        styles.categoryOption,
-                        isSelected && styles.categoryOptionSelected,
-                      ]}
-                      onPress={() => setSelectedCategory(key)}
-                      disabled={isSubmitting}
-                    >
-                      <Text
-                        style={[
-                          styles.categoryOptionLabel,
-                          isSelected && styles.categoryOptionLabelSelected,
-                        ]}
-                      >
-                        {category.icon} {category.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              <Text style={styles.modalLabel}>Récompense (XP)</Text>
-              <TextInput
-                style={styles.input}
-                value={newQuestXp}
-                onChangeText={setNewQuestXp}
-                keyboardType="number-pad"
-                placeholder="10"
-                placeholderTextColor="#94a3b8"
-                editable={!isSubmitting}
-                maxLength={5}
-              />
-
-              <View style={styles.modalActions}>
-                <Pressable
-                  style={styles.secondaryButton}
-                  onPress={handleCloseModal}
-                  disabled={isSubmitting}
-                >
-                  <Text style={styles.secondaryButtonLabel}>Annuler</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]}
-                  onPress={handleCreateTaskSubmit}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <ActivityIndicator size="small" color="#0f172a" />
-                  ) : (
-                    <Text style={styles.primaryButtonLabel}>Ajouter</Text>
-                  )}
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </Modal>
-        <BottomNav />
-      </View>
-    </SafeAreaView>
+            }
+          />
+          <BottomNav />
+        </View>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: "#0f172a",
   },
   screen: {
     flex: 1,
-    backgroundColor: "#0f172a",
   },
   listContent: {
     paddingHorizontal: 24,
-    paddingBottom: 140,
-    paddingTop: 28,
+    paddingTop: 32,
+    paddingBottom: 160,
     gap: 16,
     flexGrow: 1,
   },
   headerContainer: {
-    gap: 12,
-    marginBottom: 8,
+    marginBottom: 16,
   },
   headerTopRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  headerTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
+    gap: 16,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 16,
     backgroundColor: "rgba(30, 41, 59, 0.8)",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
     borderWidth: 1,
     borderColor: "rgba(148, 163, 184, 0.25)",
   },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#38bdf8",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   title: {
-    color: "#e2e8f0",
-    fontSize: 22,
+    color: "#f8fafc",
+    fontSize: 24,
     fontWeight: "700",
-  },
-  headerSubtitle: {
-    color: "#94a3b8",
-    fontSize: 14,
   },
   taskCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    backgroundColor: "rgba(30, 41, 59, 0.75)",
+    backgroundColor: "rgba(31, 41, 55, 0.7)",
     padding: 18,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.2)",
+    borderColor: "rgba(75, 85, 99, 0.6)",
   },
   taskCardCompleted: {
-    opacity: 0.5,
+    borderColor: "rgba(34, 197, 94, 0.4)",
+    backgroundColor: "rgba(22, 101, 52, 0.2)",
   },
   checkboxButton: {
     width: 26,
@@ -477,18 +454,19 @@ const styles = StyleSheet.create({
   },
   checkboxButtonDefault: {
     borderWidth: 2,
-    borderColor: "#38bdf8",
+    borderColor: "rgba(148, 163, 184, 0.5)",
     backgroundColor: "transparent",
   },
   checkboxButtonCompleted: {
-    backgroundColor: "#38bdf8",
+    backgroundColor: "#22c55e",
+    borderColor: "#22c55e",
   },
   taskContent: {
     flex: 1,
     gap: 4,
   },
   taskTitle: {
-    color: "#f9fafb",
+    color: "#f8fafc",
     fontSize: 16,
     fontWeight: "600",
   },
@@ -502,13 +480,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   taskCategory: {
-    color: "#cbd5f5",
-    fontSize: 14,
+    color: "#94a3b8",
+    fontSize: 12,
   },
   taskXp: {
-    color: "#f9fafb",
-    fontSize: 14,
-    fontWeight: "600",
+    color: "#c084fc",
+    fontSize: 12,
+    fontWeight: "700",
   },
   emptyState: {
     alignItems: "center",
@@ -531,110 +509,129 @@ const styles = StyleSheet.create({
     color: "#f8fafc",
     fontWeight: "600",
   },
-  primaryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 14,
-    backgroundColor: "#38bdf8",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyStateButton: {
-    minWidth: 200,
-  },
-  primaryButtonDisabled: {
-    opacity: 0.6,
-  },
-  primaryButtonLabel: {
-    color: "#0f172a",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.85)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 24,
-  },
-  modalOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  modalCard: {
-    backgroundColor: "rgba(15, 23, 42, 0.95)",
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.2)",
-    gap: 12,
-    width: "100%",
-    maxWidth: 420,
-  },
-  modalTitle: {
-    color: "#f8fafc",
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  modalLabel: {
-    color: "#cbd5f5",
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: 12,
-  },
   input: {
     width: "100%",
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.35)",
-    backgroundColor: "rgba(30, 41, 59, 0.8)",
+    borderColor: "rgba(71, 85, 105, 0.4)",
+    backgroundColor: "rgba(17, 24, 39, 0.85)",
     color: "#f8fafc",
-    marginTop: 6,
+    marginTop: 8,
   },
   categoryOptions: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginTop: 6,
+    marginTop: 8,
   },
   categoryOption: {
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.4)",
-    backgroundColor: "rgba(30, 41, 59, 0.6)",
+    borderColor: "rgba(71, 85, 105, 0.6)",
+    backgroundColor: "rgba(30, 41, 59, 0.8)",
   },
   categoryOptionSelected: {
-    backgroundColor: "#38bdf8",
-    borderColor: "#38bdf8",
+    borderColor: "#7c3aed",
+    backgroundColor: "rgba(124, 58, 237, 0.2)",
   },
   categoryOptionLabel: {
     color: "#cbd5f5",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
   },
   categoryOptionLabelSelected: {
-    color: "#0f172a",
+    color: "#c4b5fd",
   },
-  modalActions: {
+  addSection: {
+    marginTop: 8,
+    gap: 16,
+  },
+  addTaskButton: {
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  addTaskGradient: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 16,
+  },
+  addTaskButtonLabel: {
+    color: "#f8fafc",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  addTaskButtonPressed: {
+    transform: [{ scale: 0.97 }],
+  },
+  addTaskButtonDisabled: {
+    opacity: 0.6,
+  },
+  addFormCard: {
+    backgroundColor: "rgba(30, 41, 59, 0.7)",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(71, 85, 105, 0.5)",
+    padding: 20,
     gap: 12,
-    marginTop: 12,
+  },
+  addFormTitle: {
+    color: "#f8fafc",
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  formLabel: {
+    color: "#94a3b8",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  addFormActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 8,
   },
   secondaryButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    flex: 1,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.4)",
-    backgroundColor: "transparent",
+    backgroundColor: "#374151",
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  secondaryButtonDisabled: {
+    opacity: 0.6,
   },
   secondaryButtonLabel: {
-    color: "#cbd5f5",
+    color: "#e2e8f0",
     fontWeight: "600",
+  },
+  confirmButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  confirmGradient: {
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmButtonLabel: {
+    color: "#f8fafc",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  confirmButtonPressed: {
+    transform: [{ scale: 0.97 }],
+  },
+  confirmButtonDisabled: {
+    opacity: 0.6,
   },
 });

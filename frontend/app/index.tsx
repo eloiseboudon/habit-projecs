@@ -260,8 +260,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   avatarImage: {
-    width: "100%",
-    height: "100%",
+    width: "110%",
+    height: "110%",
+    transform: [{ scale: 1.15 }],
   },
   avatarInitials: {
     color: "white",

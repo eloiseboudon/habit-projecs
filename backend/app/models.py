@@ -53,6 +53,14 @@ class ChallengeStatus(enum.Enum):
     EXPIRED = "expired"
 
 
+class SnapshotPeriod(str, enum.Enum):
+    """Enumerate the supported aggregation periods for snapshots."""
+
+    DAY = "day"
+    WEEK = "week"
+    MONTH = "month"
+
+
 class User(Base, TimestampMixin):
     __tablename__ = "users"
 
@@ -210,6 +218,15 @@ class UserTask(Base, TimestampMixin):
     )
     is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    schedule_period: Mapped[SnapshotPeriod] = mapped_column(
+        Enum(SnapshotPeriod),
+        nullable=False,
+        default=SnapshotPeriod.DAY,
+        server_default=SnapshotPeriod.DAY.value,
+    )
+    schedule_interval: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
     frequency_type: Mapped[str] = mapped_column(
         String(20), nullable=False, default="daily"
     )
@@ -357,7 +374,9 @@ class ProgressSnapshot(Base):
     domain_id: Mapped[int] = mapped_column(
         ForeignKey("domains.id", ondelete="CASCADE"), nullable=False
     )
-    period: Mapped[str] = mapped_column(String(20), nullable=False)
+    period: Mapped[SnapshotPeriod] = mapped_column(
+        Enum(SnapshotPeriod), nullable=False, default=SnapshotPeriod.WEEK
+    )
     period_start_date: Mapped[date] = mapped_column(Date, nullable=False)
     points_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     xp_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

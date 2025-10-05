@@ -1,14 +1,15 @@
 """API routes for accessing user dashboard data."""
 from __future__ import annotations
 
-from datetime import datetime
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
 import unicodedata
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
@@ -33,6 +34,7 @@ from ..schemas import (
     HistoryItem,
     ProgressionResponse,
     TaskCreate,
+    TaskFrequency,
     TaskListItem,
     TaskListResponse,
     TaskTemplateItem,
@@ -51,15 +53,6 @@ router = APIRouter(prefix="/users", tags=["users"])
 def get_db_session():
     with get_session() as session:
         yield session
-
-
-def get_today_dates() -> tuple[datetime, datetime]:
-    settings = get_settings()
-    tz = ZoneInfo(settings.timezone)
-    now = datetime.now(tz)
-    start_of_day = datetime(now.year, now.month, now.day, tzinfo=tz)
-    end_of_day = start_of_day.replace(hour=23, minute=59, second=59, microsecond=999999)
-    return start_of_day, end_of_day
 
 
 def compute_initials(name: str) -> str:
@@ -83,12 +76,97 @@ def normalize_text(value: str) -> str:
     return without_diacritics.lower().strip()
 
 
+def get_user_timezone(user: User) -> ZoneInfo:
+    """Return the timezone configured for the user, with a safe fallback."""
+
+    settings = get_settings()
+    tz_name = user.timezone or settings.timezone
+    try:
+        return ZoneInfo(tz_name)
+    except Exception:
+        # In case the stored timezone is invalid, fall back to the application default.
+        return ZoneInfo(settings.timezone)
+
+
+def resolve_task_frequency(value: str | TaskFrequency | None) -> TaskFrequency:
+    """Convert persisted frequency values to a strongly-typed enum."""
+
+    if isinstance(value, TaskFrequency):
+        return value
+    try:
+        return TaskFrequency(value or TaskFrequency.DAILY.value)
+    except ValueError:
+        return TaskFrequency.DAILY
+
+
+def compute_period_window(
+    frequency: TaskFrequency,
+    *,
+    now: datetime,
+    first_day_of_week: int,
+) -> tuple[datetime, datetime]:
+    """Return the start and end datetime for the requested frequency window."""
+
+    # Ensure first_day_of_week stays in the [0, 6] range expected by datetime.weekday()
+    normalized_first_day = first_day_of_week % 7
+
+    start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    if frequency is TaskFrequency.DAILY:
+        period_start = start_of_day
+        period_end = period_start + timedelta(days=1) - timedelta(microseconds=1)
+    elif frequency is TaskFrequency.WEEKLY:
+        weekday = start_of_day.weekday()
+        days_difference = (weekday - normalized_first_day) % 7
+        period_start = start_of_day - timedelta(days=days_difference)
+        period_end = period_start + timedelta(days=7) - timedelta(microseconds=1)
+    elif frequency is TaskFrequency.MONTHLY:
+        period_start = start_of_day.replace(day=1)
+        if period_start.month == 12:
+            next_month = period_start.replace(year=period_start.year + 1, month=1)
+        else:
+            next_month = period_start.replace(month=period_start.month + 1)
+        period_end = next_month - timedelta(microseconds=1)
+    else:
+        # Default gracefully to a daily period
+        period_start = start_of_day
+        period_end = period_start + timedelta(days=1) - timedelta(microseconds=1)
+
+    return period_start, period_end
+
+
+def count_task_occurrences(
+    session: Session,
+    *,
+    user_id: UUID,
+    user_task_id: UUID,
+    period_start: datetime,
+    period_end: datetime,
+) -> int:
+    """Return the number of logs recorded for a task in the provided period."""
+
+    stmt = (
+        select(func.count())
+        .select_from(TaskLog)
+        .where(
+            TaskLog.user_id == user_id,
+            TaskLog.user_task_id == user_task_id,
+            TaskLog.occurred_at >= period_start.astimezone(timezone.utc),
+            TaskLog.occurred_at <= period_end.astimezone(timezone.utc),
+        )
+    )
+    result = session.scalar(stmt)
+    return int(result or 0)
+
+
 def build_task_list_item(
     user_task: UserTask,
     domain: Domain,
     template: TaskTemplate | None,
     *,
-    completed_today: bool,
+    occurrences_completed: int,
+    period_start: datetime,
+    period_end: datetime,
 ) -> TaskListItem:
     title = user_task.custom_title or (template.title if template else domain.name)
     xp = (
@@ -96,6 +174,12 @@ def build_task_list_item(
         if user_task.custom_xp is not None
         else (template.default_xp if template else 0)
     )
+
+    frequency = resolve_task_frequency(user_task.frequency_type)
+    target_occurrences = user_task.target_occurrences or 1
+    completed_occurrences = max(0, occurrences_completed)
+    remaining_occurrences = max(target_occurrences - completed_occurrences, 0)
+    is_completed = remaining_occurrences == 0
 
     return TaskListItem(
         id=user_task.id,
@@ -105,7 +189,13 @@ def build_task_list_item(
         domain_name=domain.name,
         icon=domain.icon,
         xp=xp,
-        completed_today=completed_today,
+        frequency_type=frequency,
+        target_occurrences=target_occurrences,
+        occurrences_completed=completed_occurrences,
+        occurrences_remaining=remaining_occurrences,
+        period_start=period_start,
+        period_end=period_end,
+        completed_today=is_completed,
     )
 
 
@@ -395,18 +485,9 @@ def get_dashboard(user_id: UUID, session: Session = Depends(get_db_session)) -> 
 @router.get("/{user_id}/tasks", response_model=TaskListResponse)
 def list_tasks(user_id: UUID, session: Session = Depends(get_db_session)) -> TaskListResponse:
     user = resolve_user(session, user_id)
-    start_of_day, end_of_day = get_today_dates()
-
-    todays_logs_stmt = (
-        select(TaskLog.user_task_id)
-        .where(
-            TaskLog.user_id == user_id,
-            TaskLog.user_task_id.is_not(None),
-            TaskLog.occurred_at >= start_of_day,
-            TaskLog.occurred_at <= end_of_day,
-        )
-    )
-    todays_logs = {row[0] for row in session.execute(todays_logs_stmt) if row[0] is not None}
+    settings = ensure_user_settings(session, user)
+    user_timezone = get_user_timezone(user)
+    now = datetime.now(user_timezone)
 
     tasks_stmt = (
         select(UserTask, Domain, TaskTemplate)
@@ -416,14 +497,59 @@ def list_tasks(user_id: UUID, session: Session = Depends(get_db_session)) -> Tas
         .order_by(UserTask.created_at.desc())
     )
 
+    task_rows = list(session.execute(tasks_stmt))
+    if not task_rows:
+        return TaskListResponse(user_id=user.id, tasks=[])
+
+    period_by_frequency: dict[TaskFrequency, tuple[datetime, datetime]] = {}
+    task_ids_by_frequency: dict[TaskFrequency, list[UUID]] = defaultdict(list)
+
+    for user_task, _, _ in task_rows:
+        frequency = resolve_task_frequency(user_task.frequency_type)
+        task_ids_by_frequency[frequency].append(user_task.id)
+        if frequency not in period_by_frequency:
+            period_by_frequency[frequency] = compute_period_window(
+                frequency,
+                now=now,
+                first_day_of_week=settings.first_day_of_week,
+            )
+
+    occurrences_by_task: dict[UUID, int] = {}
+    for frequency, task_ids in task_ids_by_frequency.items():
+        if not task_ids:
+            continue
+        period_start, period_end = period_by_frequency[frequency]
+        period_start_utc = period_start.astimezone(timezone.utc)
+        period_end_utc = period_end.astimezone(timezone.utc)
+
+        occurrences_stmt = (
+            select(TaskLog.user_task_id, func.count())
+            .where(
+                TaskLog.user_id == user_id,
+                TaskLog.user_task_id.in_(task_ids),
+                TaskLog.occurred_at >= period_start_utc,
+                TaskLog.occurred_at <= period_end_utc,
+            )
+            .group_by(TaskLog.user_task_id)
+        )
+
+        for task_id, count in session.execute(occurrences_stmt):
+            if task_id is not None:
+                occurrences_by_task[task_id] = int(count or 0)
+
     tasks: list[TaskListItem] = []
-    for user_task, domain, template in session.execute(tasks_stmt):
+    for user_task, domain, template in task_rows:
+        frequency = resolve_task_frequency(user_task.frequency_type)
+        period_start, period_end = period_by_frequency[frequency]
+        occurrences_completed = occurrences_by_task.get(user_task.id, 0)
         tasks.append(
             build_task_list_item(
                 user_task,
                 domain,
                 template,
-                completed_today=user_task.id in todays_logs,
+                occurrences_completed=occurrences_completed,
+                period_start=period_start,
+                period_end=period_end,
             )
         )
 
@@ -441,6 +567,9 @@ def create_task(
     session: Session = Depends(get_db_session),
 ) -> TaskListItem:
     user = resolve_user(session, user_id)
+    settings = ensure_user_settings(session, user)
+    user_timezone = get_user_timezone(user)
+    now = datetime.now(user_timezone)
 
     title = payload.title.strip()
     if not title:
@@ -466,6 +595,14 @@ def create_task(
             detail="Domaine inconnu pour cette quête.",
         )
 
+    frequency = resolve_task_frequency(payload.frequency_type)
+    target_occurrences = payload.target_occurrences
+    period_start, period_end = compute_period_window(
+        frequency,
+        now=now,
+        first_day_of_week=settings.first_day_of_week,
+    )
+
     user_task = UserTask(
         user_id=user.id,
         domain_id=domain.id,
@@ -474,6 +611,8 @@ def create_task(
         custom_points=payload.xp,
         is_active=True,
         is_favorite=True,
+        frequency_type=frequency.value,
+        target_occurrences=target_occurrences,
     )
 
     session.add(user_task)
@@ -484,7 +623,9 @@ def create_task(
         user_task,
         domain,
         None,
-        completed_today=False,
+        occurrences_completed=0,
+        period_start=period_start,
+        period_end=period_end,
     )
 
 
@@ -538,6 +679,9 @@ def enable_task_template(
     user_id: UUID, template_id: int, session: Session = Depends(get_db_session)
 ) -> TaskListItem:
     user = resolve_user(session, user_id)
+    settings = ensure_user_settings(session, user)
+    user_timezone = get_user_timezone(user)
+    now = datetime.now(user_timezone)
     template = session.get(TaskTemplate, template_id)
     if not template or not template.is_active:
         raise HTTPException(
@@ -565,7 +709,28 @@ def enable_task_template(
             session.add(existing)
             session.commit()
             session.refresh(existing)
-        return build_task_list_item(existing, domain, template, completed_today=False)
+
+        frequency = resolve_task_frequency(existing.frequency_type)
+        period_start, period_end = compute_period_window(
+            frequency,
+            now=now,
+            first_day_of_week=settings.first_day_of_week,
+        )
+        occurrences_completed = count_task_occurrences(
+            session,
+            user_id=user.id,
+            user_task_id=existing.id,
+            period_start=period_start,
+            period_end=period_end,
+        )
+        return build_task_list_item(
+            existing,
+            domain,
+            template,
+            occurrences_completed=occurrences_completed,
+            period_start=period_start,
+            period_end=period_end,
+        )
 
     user_task = UserTask(
         user_id=user.id,
@@ -576,13 +741,28 @@ def enable_task_template(
         custom_points=None,
         is_active=True,
         is_favorite=True,
+        frequency_type=TaskFrequency.DAILY.value,
+        target_occurrences=1,
     )
 
     session.add(user_task)
     session.commit()
     session.refresh(user_task)
 
-    return build_task_list_item(user_task, domain, template, completed_today=False)
+    period_start, period_end = compute_period_window(
+        TaskFrequency.DAILY,
+        now=now,
+        first_day_of_week=settings.first_day_of_week,
+    )
+
+    return build_task_list_item(
+        user_task,
+        domain,
+        template,
+        occurrences_completed=0,
+        period_start=period_start,
+        period_end=period_end,
+    )
 
 
 @router.delete(

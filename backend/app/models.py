@@ -194,6 +194,8 @@ class UserTask(Base, TimestampMixin):
     domain_id: Mapped[int] = mapped_column(ForeignKey("domains.id", ondelete="CASCADE"), nullable=False)
     is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    frequency_type: Mapped[str] = mapped_column(String(20), nullable=False, default="daily")
+    target_occurrences: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
     user: Mapped[User] = relationship("User", back_populates="tasks")
     template: Mapped[TaskTemplate | None] = relationship("TaskTemplate", back_populates="user_tasks")

@@ -578,17 +578,7 @@ export default function QuestsScreen() {
                   </Pressable>
                   <Text style={styles.title}>Mes Quêtes</Text>
                   <View style={styles.headerActions}>
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => router.push("/quests/personalisation")}
-                      style={({ pressed }) => [
-                        styles.catalogueButton,
-                        pressed && styles.catalogueButtonPressed,
-                      ]}
-                    >
-                      <Feather name="sliders" size={16} color="#f8fafc" />
-                      <Text style={styles.catalogueButtonLabel}>Personnalisation</Text>
-                    </Pressable>
+
                     <Pressable
                       accessibilityRole="button"
                       onPress={() => router.push("/quests/catalogue")}

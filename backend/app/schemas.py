@@ -8,7 +8,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from .models import ChallengeStatus, SnapshotPeriod, SourceType
+from .models import ChallengeStatus, SourceType
 
 
 class AvatarType(str, enum.Enum):
@@ -91,7 +91,7 @@ class ProgressSnapshotRead(BaseModel):
     id: UUID
     user_id: UUID
     domain_id: int
-    period: SnapshotPeriod
+    period: str
     period_start_date: date
     points_total: int
     xp_total: int

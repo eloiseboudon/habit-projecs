@@ -309,7 +309,7 @@ def serialize_domain_settings(session: Session, user_id: UUID) -> list[UserDomai
                 domain_name=domain.name,
                 icon=domain.icon,
                 weekly_target_points=setting.weekly_target_points if setting else 100,
-                is_enabled=setting.is_enabled if setting else False,
+                is_enabled=setting.is_enabled if setting else True,
             )
         )
 

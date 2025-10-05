@@ -19,6 +19,52 @@ import BottomNav from "../../components/BottomNav";
 import { CATEGORIES, CATEGORY_OPTIONS, type CategoryKey } from "../../constants/categories";
 import { useAuth } from "../../context/AuthContext";
 import { useHabitData } from "../../context/HabitDataContext";
+import type { SnapshotPeriod, TaskFrequency } from "../../types/api";
+
+const FREQUENCY_CHOICES: { value: TaskFrequency; label: string; periodLabel: string }[] = [
+  { value: "daily", label: "Quotidienne", periodLabel: "aujourd’hui" },
+  { value: "weekly", label: "Hebdomadaire", periodLabel: "cette semaine" },
+  { value: "monthly", label: "Mensuelle", periodLabel: "ce mois-ci" },
+];
+
+const SCHEDULE_PERIOD_BY_FREQUENCY: Record<TaskFrequency, SnapshotPeriod> = {
+  daily: "day",
+  weekly: "week",
+  monthly: "month",
+};
+
+const PERIOD_HELPER_BY_SCHEDULE: Record<SnapshotPeriod, string> = {
+  day: "par jour",
+  week: "par semaine",
+  month: "par mois",
+};
+
+function formatScheduleLabel(period: SnapshotPeriod, interval: number): string {
+  if (interval <= 1) {
+    switch (period) {
+      case "day":
+        return "aujourd’hui";
+      case "week":
+        return "cette semaine";
+      case "month":
+        return "ce mois-ci";
+      default:
+        return "cette période";
+    }
+  }
+
+  const pluralInterval = `${interval}`;
+  switch (period) {
+    case "day":
+      return `ces ${pluralInterval} jours`;
+    case "week":
+      return `ces ${pluralInterval} semaines`;
+    case "month":
+      return `ces ${pluralInterval} mois`;
+    default:
+      return "cette période";
+  }
+}
 
 export default function QuestsScreen() {
   const router = useRouter();
@@ -38,8 +84,14 @@ export default function QuestsScreen() {
   const [showAddTask, setShowAddTask] = useState(false);
   const [newQuestTitle, setNewQuestTitle] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<CategoryKey>(defaultCategory);
+  const [selectedFrequency, setSelectedFrequency] = useState<TaskFrequency>("daily");
+  const [occurrenceCount, setOccurrenceCount] = useState("1");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const defaultXpReward = 10;
+  const occurrencesHelperLabel = useMemo(() => {
+    const period = SCHEDULE_PERIOD_BY_FREQUENCY[selectedFrequency];
+    return PERIOD_HELPER_BY_SCHEDULE[period] ?? "par période";
+  }, [selectedFrequency]);
 
   useEffect(() => {
     if (!navigationState?.key) {
@@ -108,12 +160,34 @@ export default function QuestsScreen() {
   const resetForm = () => {
     setNewQuestTitle("");
     setSelectedCategory(defaultCategory);
+    setSelectedFrequency("daily");
+    setOccurrenceCount("1");
+  };
+
+  const handleSelectFrequency = (value: TaskFrequency) => {
+    setSelectedFrequency(value);
+    setOccurrenceCount((previous) => {
+      const parsed = Number.parseInt(previous, 10);
+      if (Number.isNaN(parsed) || parsed < 1) {
+        return "1";
+      }
+      return previous;
+    });
   };
 
   const handleCreateTaskSubmit = async () => {
     const title = newQuestTitle.trim();
     if (!title) {
       Alert.alert("Titre requis", "Veuillez saisir un titre pour votre quête.");
+      return;
+    }
+
+    const parsedOccurrences = Number.parseInt(occurrenceCount, 10);
+    if (Number.isNaN(parsedOccurrences) || parsedOccurrences < 1) {
+      Alert.alert(
+        "Fréquence invalide",
+        "Veuillez indiquer un nombre de répétitions supérieur ou égal à 1.",
+      );
       return;
     }
 
@@ -124,6 +198,10 @@ export default function QuestsScreen() {
         title,
         domain_key: domainKeyToSend,
         xp: defaultXpReward,
+        frequency_type: selectedFrequency,
+        schedule_period: SCHEDULE_PERIOD_BY_FREQUENCY[selectedFrequency],
+        schedule_interval: 1,
+        target_occurrences: parsedOccurrences,
       });
       resetForm();
       setShowAddTask(false);
@@ -138,14 +216,14 @@ export default function QuestsScreen() {
     }
   };
 
-  const handleToggleTask = async (taskId: string, alreadyCompleted: boolean) => {
-    if (alreadyCompleted || completingTaskId) {
+  const handleToggleTask = async (task: (typeof questItems)[number]) => {
+    if (task.completed_today || completingTaskId) {
       return;
     }
 
     try {
-      setCompletingTaskId(taskId);
-      await completeTask(taskId);
+      setCompletingTaskId(task.id);
+      await completeTask(task.id);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Impossible d'enregistrer cette tâche.";
@@ -163,25 +241,34 @@ export default function QuestsScreen() {
     const category = CATEGORIES[item.domain_key as CategoryKey] ?? null;
     const icon = item.icon ?? category?.icon ?? "⭐";
     const label = category?.label ?? item.domain_name;
+    const isCompleted = item.completed_today;
+    const periodLabel = formatScheduleLabel(item.schedule_period, item.schedule_interval);
+    const occurrencesRemaining = item.occurrences_remaining;
+    const fractionLabel = `${item.occurrences_completed}/${item.target_occurrences}`;
+    const progressLabel = isCompleted
+      ? `Objectif atteint ${periodLabel} (${fractionLabel})`
+      : `Encore ${occurrencesRemaining} fois ${periodLabel} (${fractionLabel})`;
+    const showProgress =
+      item.target_occurrences > 1 || item.schedule_interval > 1 || item.frequency_type !== "daily";
 
     const isLoading = completingTaskId === item.id;
 
     return (
       <Pressable
-        style={[styles.taskCard, item.completed_today && styles.taskCardCompleted]}
-        onPress={() => handleToggleTask(item.id, item.completed_today)}
-        disabled={item.completed_today || isLoading}
+        style={[styles.taskCard, isCompleted && styles.taskCardCompleted]}
+        onPress={() => handleToggleTask(item)}
+        disabled={isCompleted || isLoading}
       >
         <View
           style={[
             styles.checkboxButton,
-            item.completed_today ? styles.checkboxButtonCompleted : styles.checkboxButtonDefault,
+            isCompleted ? styles.checkboxButtonCompleted : styles.checkboxButtonDefault,
           ]}
         >
-          {item.completed_today && <Feather name="check" size={16} color="#0f172a" />}
+          {isCompleted && <Feather name="check" size={16} color="#0f172a" />}
         </View>
         <View style={styles.taskContent}>
-          <Text style={[styles.taskTitle, item.completed_today && styles.taskTitleCompleted]}>
+          <Text style={[styles.taskTitle, isCompleted && styles.taskTitleCompleted]}>
             {item.title}
           </Text>
           <View style={styles.taskMetaRow}>
@@ -190,6 +277,11 @@ export default function QuestsScreen() {
             </Text>
             <Text style={styles.taskXp}>+{item.xp} XP</Text>
           </View>
+          {showProgress && (
+            <Text style={[styles.taskProgress, isCompleted && styles.taskProgressCompleted]}>
+              {progressLabel}
+            </Text>
+          )}
         </View>
         {isLoading && <ActivityIndicator size="small" color="#f8fafc" />}
       </Pressable>
@@ -266,12 +358,12 @@ export default function QuestsScreen() {
             style={styles.addTaskGradient}
           >
             <Feather name="plus" size={20} color="#f8fafc" />
-            <Text style={styles.addTaskButtonLabel}>Ajouter une tâche</Text>
+            <Text style={styles.addTaskButtonLabel}>Ajouter une quête</Text>
           </LinearGradient>
         </Pressable>
       ) : (
         <View style={styles.addFormCard}>
-          <Text style={styles.addFormTitle}>Nouvelle tâche</Text>
+          <Text style={styles.addFormTitle}>Nouvelle quête</Text>
 
           <Text style={styles.formLabel}>Catégorie</Text>
           <View style={styles.categoryOptions}>
@@ -305,6 +397,47 @@ export default function QuestsScreen() {
             placeholderTextColor="#64748b"
             value={newQuestTitle}
             onChangeText={setNewQuestTitle}
+            editable={!isSubmitting}
+          />
+
+          <Text style={styles.formLabel}>Fréquence</Text>
+          <View style={styles.frequencyOptions}>
+            {FREQUENCY_CHOICES.map((option) => {
+              const isSelected = selectedFrequency === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  style={[
+                    styles.frequencyOption,
+                    isSelected && styles.frequencyOptionSelected,
+                  ]}
+                  onPress={() => handleSelectFrequency(option.value)}
+                  disabled={isSubmitting}
+                >
+                  <Text
+                    style={[
+                      styles.frequencyOptionLabel,
+                      isSelected && styles.frequencyOptionLabelSelected,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                  <Text style={styles.frequencyOptionHelper}>{option.periodLabel}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.formLabel}>Objectif</Text>
+          <Text style={styles.formHelper}>Nombre de fois {occurrencesHelperLabel}</Text>
+          <TextInput
+            style={styles.input}
+            placeholder={selectedFrequency === "weekly" ? "2" : "1"}
+            placeholderTextColor="#64748b"
+            value={occurrenceCount}
+            onChangeText={(value) => setOccurrenceCount(value.replace(/[^0-9]/g, ""))}
+            keyboardType="number-pad"
+            maxLength={3}
             editable={!isSubmitting}
           />
 
@@ -379,7 +512,7 @@ export default function QuestsScreen() {
                   >
                     <Feather name="chevron-left" size={24} color="#f8fafc" />
                   </Pressable>
-                  <Text style={styles.title}>Mes Quêtes du jour</Text>
+                  <Text style={styles.title}>Mes Quêtes</Text>
                   <Pressable
                     accessibilityRole="button"
                     onPress={() => router.push("/quests/catalogue")}
@@ -521,6 +654,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
+  taskProgress: {
+    color: "#e2e8f0",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  taskProgressCompleted: {
+    color: "rgba(226, 232, 240, 0.7)",
+  },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
@@ -579,6 +720,40 @@ const styles = StyleSheet.create({
   categoryOptionLabelSelected: {
     color: "#c4b5fd",
   },
+  frequencyOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 8,
+  },
+  frequencyOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(71, 85, 105, 0.6)",
+    backgroundColor: "rgba(17, 24, 39, 0.8)",
+    flexGrow: 1,
+    minWidth: "30%",
+    gap: 4,
+    alignItems: "flex-start",
+  },
+  frequencyOptionSelected: {
+    borderColor: "#ec4899",
+    backgroundColor: "rgba(236, 72, 153, 0.25)",
+  },
+  frequencyOptionLabel: {
+    color: "#e2e8f0",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  frequencyOptionLabelSelected: {
+    color: "#f5d0fe",
+  },
+  frequencyOptionHelper: {
+    color: "#cbd5f5",
+    fontSize: 11,
+  },
   addSection: {
     marginTop: 8,
     gap: 16,
@@ -624,6 +799,11 @@ const styles = StyleSheet.create({
     color: "#94a3b8",
     fontSize: 13,
     fontWeight: "600",
+  },
+  formHelper: {
+    color: "#64748b",
+    fontSize: 12,
+    marginTop: 4,
   },
   addFormActions: {
     flexDirection: "row",

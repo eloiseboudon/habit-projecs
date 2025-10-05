@@ -35,6 +35,9 @@ export type DashboardResponse = {
   domain_stats: DashboardDomainStat[];
 };
 
+export type TaskFrequency = "daily" | "weekly" | "monthly";
+export type SnapshotPeriod = "day" | "week" | "month";
+
 export type TaskListItem = {
   id: string;
   title: string;
@@ -43,6 +46,14 @@ export type TaskListItem = {
   domain_name: string;
   icon: string | null;
   xp: number;
+  schedule_period: SnapshotPeriod;
+  schedule_interval: number;
+  frequency_type: TaskFrequency;
+  target_occurrences: number;
+  occurrences_completed: number;
+  occurrences_remaining: number;
+  period_start: string;
+  period_end: string;
   completed_today: boolean;
 };
 
@@ -55,6 +66,10 @@ export type CreateTaskRequest = {
   title: string;
   domain_key: string;
   xp: number;
+  frequency_type: TaskFrequency;
+  schedule_period: SnapshotPeriod;
+  schedule_interval: number;
+  target_occurrences: number;
 };
 
 export type TaskTemplateItem = {

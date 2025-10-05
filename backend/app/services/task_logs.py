@@ -1,4 +1,5 @@
 """Business logic for task log creation and related side effects."""
+
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
@@ -98,7 +99,9 @@ def ensure_user_exists(session: Session, user_id: UUID) -> User:
 def get_or_create_level(session: Session, user: User) -> UserLevel:
     level = session.get(UserLevel, user.id)
     if not level:
-        level = UserLevel(user_id=user.id, current_level=1, current_xp=0, xp_to_next=xp_to_next(1))
+        level = UserLevel(
+            user_id=user.id, current_level=1, current_xp=0, xp_to_next=xp_to_next(1)
+        )
         session.add(level)
         session.flush()
     return level
@@ -116,8 +119,12 @@ def update_level(level: UserLevel, xp_awarded: int, occurred_at: datetime) -> No
         level.last_update_at = occurred_at
 
 
-def update_streak(session: Session, user_id: UUID, domain_id: int, occurred_date: date) -> Streak:
-    stmt = select(Streak).where(Streak.user_id == user_id, Streak.domain_id == domain_id)
+def update_streak(
+    session: Session, user_id: UUID, domain_id: int, occurred_date: date
+) -> Streak:
+    stmt = select(Streak).where(
+        Streak.user_id == user_id, Streak.domain_id == domain_id
+    )
     streak = session.execute(stmt).scalar_one_or_none()
     if not streak:
         streak = Streak(
@@ -132,7 +139,10 @@ def update_streak(session: Session, user_id: UUID, domain_id: int, occurred_date
 
     if streak.last_activity_date == occurred_date:
         pass
-    elif streak.last_activity_date and occurred_date == streak.last_activity_date + timedelta(days=1):
+    elif (
+        streak.last_activity_date
+        and occurred_date == streak.last_activity_date + timedelta(days=1)
+    ):
         streak.current_streak_days += 1
         streak.last_activity_date = occurred_date
     else:
@@ -149,7 +159,7 @@ def update_snapshot(
     session: Session,
     user_id: UUID,
     domain_id: int,
-    period: SnapshotPeriod,
+    period: str,
     start_date: date,
     xp_awarded: int,
     points_awarded: int,
@@ -201,7 +211,9 @@ def create_task_log(session: Session, payload: TaskLogCreate) -> TaskLog:
 
     resolve_domain(session, domain_id)
 
-    xp_awarded, points_awarded, default_unit = resolve_rewards(user_task, payload.quantity)
+    xp_awarded, points_awarded, default_unit = resolve_rewards(
+        user_task, payload.quantity
+    )
     unit = payload.unit or default_unit
     if payload.occurred_at:
         occurred_at = payload.occurred_at
@@ -247,7 +259,7 @@ def create_task_log(session: Session, payload: TaskLogCreate) -> TaskLog:
         session,
         payload.user_id,
         domain_id,
-        SnapshotPeriod.DAY,
+        SnapshotPeriod.DAY.value,
         occurred_date,
         xp_awarded,
         points_awarded,
@@ -257,7 +269,7 @@ def create_task_log(session: Session, payload: TaskLogCreate) -> TaskLog:
         session,
         payload.user_id,
         domain_id,
-        SnapshotPeriod.WEEK,
+        SnapshotPeriod.WEEK.value,
         monday_start(occurred_date),
         xp_awarded,
         points_awarded,

@@ -55,6 +55,7 @@ export type TaskListItem = {
   period_start: string;
   period_end: string;
   completed_today: boolean;
+  is_custom: boolean;
 };
 
 export type TaskListResponse = {

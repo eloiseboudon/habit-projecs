@@ -270,6 +270,7 @@ def build_task_list_item(
         period_start=period_start,
         period_end=period_end,
         completed_today=is_completed,
+        is_custom=template is None,
     )
 
 

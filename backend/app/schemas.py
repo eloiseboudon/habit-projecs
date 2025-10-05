@@ -203,6 +203,7 @@ class TaskListItem(BaseModel):
     period_start: datetime
     period_end: datetime
     completed_today: bool
+    is_custom: bool
 
 
 class TaskListResponse(BaseModel):

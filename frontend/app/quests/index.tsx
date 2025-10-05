@@ -1,11 +1,12 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRootNavigationState, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  ListRenderItemInfo,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -19,7 +20,7 @@ import BottomNav from "../../components/BottomNav";
 import { CATEGORIES, CATEGORY_OPTIONS, type CategoryKey } from "../../constants/categories";
 import { useAuth } from "../../context/AuthContext";
 import { useHabitData } from "../../context/HabitDataContext";
-import type { SnapshotPeriod, TaskFrequency } from "../../types/api";
+import type { SnapshotPeriod, TaskFrequency, TaskListItem } from "../../types/api";
 
 const FREQUENCY_CHOICES: { value: TaskFrequency; label: string; periodLabel: string }[] = [
   { value: "daily", label: "Quotidienne", periodLabel: "aujourd’hui" },
@@ -66,6 +67,80 @@ function formatScheduleLabel(period: SnapshotPeriod, interval: number): string {
   }
 }
 
+type QuestListItemProps = {
+  item: TaskListItem;
+  onToggle: (task: TaskListItem) => void;
+  isLoading: boolean;
+};
+
+const areQuestItemsEqual = (prevItem: TaskListItem, nextItem: TaskListItem) =>
+  prevItem.id === nextItem.id &&
+  prevItem.title === nextItem.title &&
+  prevItem.domain_key === nextItem.domain_key &&
+  prevItem.domain_name === nextItem.domain_name &&
+  prevItem.icon === nextItem.icon &&
+  prevItem.xp === nextItem.xp &&
+  prevItem.schedule_period === nextItem.schedule_period &&
+  prevItem.schedule_interval === nextItem.schedule_interval &&
+  prevItem.frequency_type === nextItem.frequency_type &&
+  prevItem.target_occurrences === nextItem.target_occurrences &&
+  prevItem.occurrences_completed === nextItem.occurrences_completed &&
+  prevItem.occurrences_remaining === nextItem.occurrences_remaining &&
+  prevItem.completed_today === nextItem.completed_today;
+
+const QuestListItem = memo(({ item, onToggle, isLoading }: QuestListItemProps) => {
+  const category = CATEGORIES[item.domain_key as CategoryKey] ?? null;
+  const icon = item.icon ?? category?.icon ?? "⭐";
+  const label = category?.label ?? item.domain_name;
+  const isCompleted = item.completed_today;
+  const periodLabel = formatScheduleLabel(item.schedule_period, item.schedule_interval);
+  const occurrencesRemaining = item.occurrences_remaining;
+  const fractionLabel = `${item.occurrences_completed}/${item.target_occurrences}`;
+  const progressLabel = isCompleted
+    ? `Objectif atteint ${periodLabel} (${fractionLabel})`
+    : `Encore ${occurrencesRemaining} fois ${periodLabel} (${fractionLabel})`;
+  const showProgress =
+    item.target_occurrences > 1 ||
+    item.schedule_interval > 1 ||
+    item.frequency_type !== "daily";
+
+  return (
+    <Pressable
+      style={[styles.taskCard, isCompleted && styles.taskCardCompleted]}
+      onPress={() => onToggle(item)}
+      disabled={isCompleted || isLoading}
+    >
+      <View
+        style={[
+          styles.checkboxButton,
+          isCompleted ? styles.checkboxButtonCompleted : styles.checkboxButtonDefault,
+        ]}
+      >
+        {isCompleted && <Feather name="check" size={16} color="#0f172a" />}
+      </View>
+      <View style={styles.taskContent}>
+        <Text style={[styles.taskTitle, isCompleted && styles.taskTitleCompleted]}>
+          {item.title}
+        </Text>
+        <View style={styles.taskMetaRow}>
+          <Text style={styles.taskCategory}>
+            {icon} {label}
+          </Text>
+          <Text style={styles.taskXp}>+{item.xp} XP</Text>
+        </View>
+        {showProgress && (
+          <Text style={[styles.taskProgress, isCompleted && styles.taskProgressCompleted]}>
+            {progressLabel}
+          </Text>
+        )}
+      </View>
+      {isLoading && <ActivityIndicator size="small" color="#f8fafc" />}
+    </Pressable>
+  );
+}, (prev, next) => areQuestItemsEqual(prev.item, next.item) && prev.isLoading === next.isLoading);
+
+QuestListItem.displayName = "QuestListItem";
+
 export default function QuestsScreen() {
   const router = useRouter();
   const navigationState = useRootNavigationState();
@@ -103,7 +178,7 @@ export default function QuestsScreen() {
     }
   }, [authState.status, navigationState?.key, router]);
 
-  const questItems = useMemo(() => tasks?.tasks ?? [], [tasks]);
+  const questItems = useMemo<TaskListItem[]>(() => tasks?.tasks ?? [], [tasks]);
   const domainKeyOverrides = useMemo(() => {
     const overrides = new Map<CategoryKey, string>();
 
@@ -216,77 +291,36 @@ export default function QuestsScreen() {
     }
   };
 
-  const handleToggleTask = async (task: (typeof questItems)[number]) => {
-    if (task.completed_today || completingTaskId) {
-      return;
-    }
+  const handleToggleTask = useCallback(
+    async (task: TaskListItem) => {
+      if (task.completed_today || completingTaskId) {
+        return;
+      }
 
-    try {
-      setCompletingTaskId(task.id);
-      await completeTask(task.id);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Impossible d'enregistrer cette tâche.";
-      Alert.alert("Erreur", message);
-    } finally {
-      setCompletingTaskId(null);
-    }
-  };
+      try {
+        setCompletingTaskId(task.id);
+        await completeTask(task.id);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Impossible d'enregistrer cette tâche.";
+        Alert.alert("Erreur", message);
+      } finally {
+        setCompletingTaskId(null);
+      }
+    },
+    [completeTask, completingTaskId],
+  );
 
-  const renderItem = ({
-    item,
-  }: {
-    item: (typeof questItems)[number];
-  }) => {
-    const category = CATEGORIES[item.domain_key as CategoryKey] ?? null;
-    const icon = item.icon ?? category?.icon ?? "⭐";
-    const label = category?.label ?? item.domain_name;
-    const isCompleted = item.completed_today;
-    const periodLabel = formatScheduleLabel(item.schedule_period, item.schedule_interval);
-    const occurrencesRemaining = item.occurrences_remaining;
-    const fractionLabel = `${item.occurrences_completed}/${item.target_occurrences}`;
-    const progressLabel = isCompleted
-      ? `Objectif atteint ${periodLabel} (${fractionLabel})`
-      : `Encore ${occurrencesRemaining} fois ${periodLabel} (${fractionLabel})`;
-    const showProgress =
-      item.target_occurrences > 1 || item.schedule_interval > 1 || item.frequency_type !== "daily";
-
-    const isLoading = completingTaskId === item.id;
-
-    return (
-      <Pressable
-        style={[styles.taskCard, isCompleted && styles.taskCardCompleted]}
-        onPress={() => handleToggleTask(item)}
-        disabled={isCompleted || isLoading}
-      >
-        <View
-          style={[
-            styles.checkboxButton,
-            isCompleted ? styles.checkboxButtonCompleted : styles.checkboxButtonDefault,
-          ]}
-        >
-          {isCompleted && <Feather name="check" size={16} color="#0f172a" />}
-        </View>
-        <View style={styles.taskContent}>
-          <Text style={[styles.taskTitle, isCompleted && styles.taskTitleCompleted]}>
-            {item.title}
-          </Text>
-          <View style={styles.taskMetaRow}>
-            <Text style={styles.taskCategory}>
-              {icon} {label}
-            </Text>
-            <Text style={styles.taskXp}>+{item.xp} XP</Text>
-          </View>
-          {showProgress && (
-            <Text style={[styles.taskProgress, isCompleted && styles.taskProgressCompleted]}>
-              {progressLabel}
-            </Text>
-          )}
-        </View>
-        {isLoading && <ActivityIndicator size="small" color="#f8fafc" />}
-      </Pressable>
-    );
-  };
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<TaskListItem>) => (
+      <QuestListItem
+        item={item}
+        onToggle={handleToggleTask}
+        isLoading={completingTaskId === item.id}
+      />
+    ),
+    [handleToggleTask, completingTaskId],
+  );
 
   const ListEmptyComponent = () => {
     if (isInitialLoading) {
@@ -491,7 +525,7 @@ export default function QuestsScreen() {
     >
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.screen}>
-          <FlatList
+          <FlatList<TaskListItem>
             data={questItems}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}

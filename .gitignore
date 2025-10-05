@@ -56,6 +56,4 @@ backend/migrations/versions/__pycache__/*
 # Backend local environment
 backend/.venv/
 
-
-
 tips.md

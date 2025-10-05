@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
@@ -99,38 +99,87 @@ def resolve_task_frequency(value: str | TaskFrequency | None) -> TaskFrequency:
         return TaskFrequency.DAILY
 
 
+FREQUENCY_TO_PERIOD: dict[TaskFrequency, SnapshotPeriod] = {
+    TaskFrequency.DAILY: SnapshotPeriod.DAY,
+    TaskFrequency.WEEKLY: SnapshotPeriod.WEEK,
+    TaskFrequency.MONTHLY: SnapshotPeriod.MONTH,
+}
+
+PERIOD_TO_FREQUENCY: dict[SnapshotPeriod, TaskFrequency] = {
+    period: frequency for frequency, period in FREQUENCY_TO_PERIOD.items()
+}
+
+
+def map_frequency_to_period(frequency: TaskFrequency) -> SnapshotPeriod:
+    return FREQUENCY_TO_PERIOD.get(frequency, SnapshotPeriod.DAY)
+
+
+def map_period_to_frequency(period: SnapshotPeriod) -> TaskFrequency:
+    return PERIOD_TO_FREQUENCY.get(period, TaskFrequency.DAILY)
+
+
+def add_months(start: datetime, months: int) -> datetime:
+    total_months = (start.year * 12 + (start.month - 1)) + months
+    year = total_months // 12
+    month = total_months % 12 + 1
+    return start.replace(year=year, month=month)
+
+
 def compute_period_window(
-    frequency: TaskFrequency,
+    period: SnapshotPeriod,
     *,
     now: datetime,
     first_day_of_week: int,
+    interval: int = 1,
 ) -> tuple[datetime, datetime]:
     """Return the start and end datetime for the requested frequency window."""
 
+    normalized_interval = max(interval, 1)
     # Ensure first_day_of_week stays in the [0, 6] range expected by datetime.weekday()
     normalized_first_day = first_day_of_week % 7
 
     start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    if frequency is TaskFrequency.DAILY:
-        period_start = start_of_day
-        period_end = period_start + timedelta(days=1) - timedelta(microseconds=1)
-    elif frequency is TaskFrequency.WEEKLY:
+    if period is SnapshotPeriod.DAY:
+        baseline = date(1970, 1, 1)
+        days_since_baseline = (start_of_day.date() - baseline).days
+        offset_days = days_since_baseline % normalized_interval
+        period_start = start_of_day - timedelta(days=offset_days)
+        period_end = period_start + timedelta(days=normalized_interval) - timedelta(microseconds=1)
+    elif period is SnapshotPeriod.WEEK:
         weekday = start_of_day.weekday()
         days_difference = (weekday - normalized_first_day) % 7
-        period_start = start_of_day - timedelta(days=days_difference)
-        period_end = period_start + timedelta(days=7) - timedelta(microseconds=1)
-    elif frequency is TaskFrequency.MONTHLY:
+        current_week_start = start_of_day - timedelta(days=days_difference)
+
+        baseline = date(1970, 1, 5)  # Monday as baseline
+        baseline_adjustment = (baseline.weekday() - normalized_first_day) % 7
+        aligned_baseline = baseline - timedelta(days=baseline_adjustment)
+        baseline_start = datetime.combine(
+            aligned_baseline, datetime.min.time(), tzinfo=start_of_day.tzinfo
+        )
+
+        weeks_since_baseline = (current_week_start.date() - baseline_start.date()).days // 7
+        block_start_weeks = weeks_since_baseline - (weeks_since_baseline % normalized_interval)
+        period_start = baseline_start + timedelta(weeks=block_start_weeks)
+        period_end = period_start + timedelta(weeks=normalized_interval) - timedelta(microseconds=1)
+    elif period is SnapshotPeriod.MONTH:
         period_start = start_of_day.replace(day=1)
-        if period_start.month == 12:
-            next_month = period_start.replace(year=period_start.year + 1, month=1)
-        else:
-            next_month = period_start.replace(month=period_start.month + 1)
-        period_end = next_month - timedelta(microseconds=1)
+
+        baseline = date(1970, 1, 1)
+        baseline_start = datetime.combine(baseline, datetime.min.time(), tzinfo=start_of_day.tzinfo)
+        months_since_baseline = (
+            (period_start.year - baseline_start.year) * 12
+            + (period_start.month - baseline_start.month)
+        )
+        block_start_months = months_since_baseline - (
+            months_since_baseline % normalized_interval
+        )
+        period_start = add_months(baseline_start, block_start_months)
+        next_period_start = add_months(period_start, normalized_interval)
+        period_end = next_period_start - timedelta(microseconds=1)
     else:
-        # Default gracefully to a daily period
         period_start = start_of_day
-        period_end = period_start + timedelta(days=1) - timedelta(microseconds=1)
+        period_end = period_start + timedelta(days=normalized_interval) - timedelta(microseconds=1)
 
     return period_start, period_end
 
@@ -159,6 +208,28 @@ def count_task_occurrences(
     return int(result or 0)
 
 
+def normalize_interval(value: int | None) -> int:
+    return value if value and value > 0 else 1
+
+
+def resolve_task_schedule_from_payload(payload: TaskCreate) -> tuple[SnapshotPeriod, int]:
+    period = payload.schedule_period
+    if period is None:
+        frequency = resolve_task_frequency(payload.frequency_type)
+        period = map_frequency_to_period(frequency)
+    interval = normalize_interval(payload.schedule_interval)
+    return period, interval
+
+
+def resolve_task_schedule(user_task: UserTask) -> tuple[SnapshotPeriod, int]:
+    period = user_task.schedule_period
+    if period is None:
+        frequency = resolve_task_frequency(user_task.frequency_type)
+        period = map_frequency_to_period(frequency)
+    interval = normalize_interval(getattr(user_task, "schedule_interval", 1))
+    return period, interval
+
+
 def build_task_list_item(
     user_task: UserTask,
     domain: Domain,
@@ -175,7 +246,8 @@ def build_task_list_item(
         else (template.default_xp if template else 0)
     )
 
-    frequency = resolve_task_frequency(user_task.frequency_type)
+    schedule_period, schedule_interval = resolve_task_schedule(user_task)
+    frequency = map_period_to_frequency(schedule_period)
     target_occurrences = user_task.target_occurrences or 1
     completed_occurrences = max(0, occurrences_completed)
     remaining_occurrences = max(target_occurrences - completed_occurrences, 0)
@@ -189,6 +261,8 @@ def build_task_list_item(
         domain_name=domain.name,
         icon=domain.icon,
         xp=xp,
+        schedule_period=schedule_period,
+        schedule_interval=schedule_interval,
         frequency_type=frequency,
         target_occurrences=target_occurrences,
         occurrences_completed=completed_occurrences,
@@ -501,24 +575,26 @@ def list_tasks(user_id: UUID, session: Session = Depends(get_db_session)) -> Tas
     if not task_rows:
         return TaskListResponse(user_id=user.id, tasks=[])
 
-    period_by_frequency: dict[TaskFrequency, tuple[datetime, datetime]] = {}
-    task_ids_by_frequency: dict[TaskFrequency, list[UUID]] = defaultdict(list)
+    schedule_windows: dict[tuple[SnapshotPeriod, int], tuple[datetime, datetime]] = {}
+    task_ids_by_schedule: dict[tuple[SnapshotPeriod, int], list[UUID]] = defaultdict(list)
 
     for user_task, _, _ in task_rows:
-        frequency = resolve_task_frequency(user_task.frequency_type)
-        task_ids_by_frequency[frequency].append(user_task.id)
-        if frequency not in period_by_frequency:
-            period_by_frequency[frequency] = compute_period_window(
-                frequency,
+        schedule_period, schedule_interval = resolve_task_schedule(user_task)
+        schedule_key = (schedule_period, schedule_interval)
+        task_ids_by_schedule[schedule_key].append(user_task.id)
+        if schedule_key not in schedule_windows:
+            schedule_windows[schedule_key] = compute_period_window(
+                schedule_period,
                 now=now,
                 first_day_of_week=settings.first_day_of_week,
+                interval=schedule_interval,
             )
 
     occurrences_by_task: dict[UUID, int] = {}
-    for frequency, task_ids in task_ids_by_frequency.items():
+    for schedule_key, task_ids in task_ids_by_schedule.items():
         if not task_ids:
             continue
-        period_start, period_end = period_by_frequency[frequency]
+        period_start, period_end = schedule_windows[schedule_key]
         period_start_utc = period_start.astimezone(timezone.utc)
         period_end_utc = period_end.astimezone(timezone.utc)
 
@@ -539,8 +615,9 @@ def list_tasks(user_id: UUID, session: Session = Depends(get_db_session)) -> Tas
 
     tasks: list[TaskListItem] = []
     for user_task, domain, template in task_rows:
-        frequency = resolve_task_frequency(user_task.frequency_type)
-        period_start, period_end = period_by_frequency[frequency]
+        schedule_period, schedule_interval = resolve_task_schedule(user_task)
+        schedule_key = (schedule_period, schedule_interval)
+        period_start, period_end = schedule_windows[schedule_key]
         occurrences_completed = occurrences_by_task.get(user_task.id, 0)
         tasks.append(
             build_task_list_item(
@@ -595,12 +672,14 @@ def create_task(
             detail="Domaine inconnu pour cette quête.",
         )
 
-    frequency = resolve_task_frequency(payload.frequency_type)
+    schedule_period, schedule_interval = resolve_task_schedule_from_payload(payload)
+    frequency = map_period_to_frequency(schedule_period)
     target_occurrences = payload.target_occurrences
     period_start, period_end = compute_period_window(
-        frequency,
+        schedule_period,
         now=now,
         first_day_of_week=settings.first_day_of_week,
+        interval=schedule_interval,
     )
 
     user_task = UserTask(
@@ -611,6 +690,8 @@ def create_task(
         custom_points=payload.xp,
         is_active=True,
         is_favorite=True,
+        schedule_period=schedule_period,
+        schedule_interval=schedule_interval,
         frequency_type=frequency.value,
         target_occurrences=target_occurrences,
     )
@@ -710,11 +791,12 @@ def enable_task_template(
             session.commit()
             session.refresh(existing)
 
-        frequency = resolve_task_frequency(existing.frequency_type)
+        schedule_period, schedule_interval = resolve_task_schedule(existing)
         period_start, period_end = compute_period_window(
-            frequency,
+            schedule_period,
             now=now,
             first_day_of_week=settings.first_day_of_week,
+            interval=schedule_interval,
         )
         occurrences_completed = count_task_occurrences(
             session,
@@ -741,6 +823,8 @@ def enable_task_template(
         custom_points=None,
         is_active=True,
         is_favorite=True,
+        schedule_period=SnapshotPeriod.DAY,
+        schedule_interval=1,
         frequency_type=TaskFrequency.DAILY.value,
         target_occurrences=1,
     )
@@ -750,9 +834,10 @@ def enable_task_template(
     session.refresh(user_task)
 
     period_start, period_end = compute_period_window(
-        TaskFrequency.DAILY,
+        SnapshotPeriod.DAY,
         now=now,
         first_day_of_week=settings.first_day_of_week,
+        interval=1,
     )
 
     return build_task_list_item(

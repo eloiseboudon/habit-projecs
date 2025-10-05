@@ -194,6 +194,8 @@ class TaskListItem(BaseModel):
     domain_name: str
     icon: Optional[str]
     xp: int
+    schedule_period: SnapshotPeriod
+    schedule_interval: int
     frequency_type: TaskFrequency
     target_occurrences: int
     occurrences_completed: int
@@ -213,6 +215,8 @@ class TaskCreate(BaseModel):
     domain_key: str = Field(min_length=1, max_length=120)
     xp: int = Field(default=10, ge=0, le=10000)
     frequency_type: TaskFrequency = Field(default=TaskFrequency.DAILY)
+    schedule_period: Optional[SnapshotPeriod] = None
+    schedule_interval: int = Field(default=1, ge=1, le=52)
     target_occurrences: int = Field(default=1, ge=1, le=100)
 
 

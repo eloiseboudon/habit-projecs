@@ -218,6 +218,15 @@ class UserTask(Base, TimestampMixin):
     )
     is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    schedule_period: Mapped[SnapshotPeriod] = mapped_column(
+        Enum(SnapshotPeriod),
+        nullable=False,
+        default=SnapshotPeriod.DAY,
+        server_default=SnapshotPeriod.DAY.value,
+    )
+    schedule_interval: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
     frequency_type: Mapped[str] = mapped_column(
         String(20), nullable=False, default="daily"
     )

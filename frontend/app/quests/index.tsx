@@ -19,7 +19,7 @@ import BottomNav from "../../components/BottomNav";
 import { CATEGORIES, CATEGORY_OPTIONS, type CategoryKey } from "../../constants/categories";
 import { useAuth } from "../../context/AuthContext";
 import { useHabitData } from "../../context/HabitDataContext";
-import type { TaskFrequency } from "../../types/api";
+import type { SnapshotPeriod, TaskFrequency } from "../../types/api";
 
 const FREQUENCY_CHOICES: { value: TaskFrequency; label: string; periodLabel: string }[] = [
   { value: "daily", label: "Quotidienne", periodLabel: "aujourd’hui" },
@@ -27,11 +27,44 @@ const FREQUENCY_CHOICES: { value: TaskFrequency; label: string; periodLabel: str
   { value: "monthly", label: "Mensuelle", periodLabel: "ce mois-ci" },
 ];
 
-const PERIOD_LABEL_BY_FREQUENCY: Record<TaskFrequency, string> = {
-  daily: "aujourd’hui",
-  weekly: "cette semaine",
-  monthly: "ce mois-ci",
+const SCHEDULE_PERIOD_BY_FREQUENCY: Record<TaskFrequency, SnapshotPeriod> = {
+  daily: "day",
+  weekly: "week",
+  monthly: "month",
 };
+
+const PERIOD_HELPER_BY_SCHEDULE: Record<SnapshotPeriod, string> = {
+  day: "par jour",
+  week: "par semaine",
+  month: "par mois",
+};
+
+function formatScheduleLabel(period: SnapshotPeriod, interval: number): string {
+  if (interval <= 1) {
+    switch (period) {
+      case "day":
+        return "aujourd’hui";
+      case "week":
+        return "cette semaine";
+      case "month":
+        return "ce mois-ci";
+      default:
+        return "cette période";
+    }
+  }
+
+  const pluralInterval = `${interval}`;
+  switch (period) {
+    case "day":
+      return `ces ${pluralInterval} jours`;
+    case "week":
+      return `ces ${pluralInterval} semaines`;
+    case "month":
+      return `ces ${pluralInterval} mois`;
+    default:
+      return "cette période";
+  }
+}
 
 export default function QuestsScreen() {
   const router = useRouter();
@@ -56,14 +89,8 @@ export default function QuestsScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const defaultXpReward = 10;
   const occurrencesHelperLabel = useMemo(() => {
-    switch (selectedFrequency) {
-      case "weekly":
-        return "par semaine";
-      case "monthly":
-        return "par mois";
-      default:
-        return "par jour";
-    }
+    const period = SCHEDULE_PERIOD_BY_FREQUENCY[selectedFrequency];
+    return PERIOD_HELPER_BY_SCHEDULE[period] ?? "par période";
   }, [selectedFrequency]);
 
   useEffect(() => {
@@ -172,6 +199,8 @@ export default function QuestsScreen() {
         domain_key: domainKeyToSend,
         xp: defaultXpReward,
         frequency_type: selectedFrequency,
+        schedule_period: SCHEDULE_PERIOD_BY_FREQUENCY[selectedFrequency],
+        schedule_interval: 1,
         target_occurrences: parsedOccurrences,
       });
       resetForm();
@@ -213,13 +242,14 @@ export default function QuestsScreen() {
     const icon = item.icon ?? category?.icon ?? "⭐";
     const label = category?.label ?? item.domain_name;
     const isCompleted = item.completed_today;
-    const periodLabel = PERIOD_LABEL_BY_FREQUENCY[item.frequency_type] ?? "cette période";
+    const periodLabel = formatScheduleLabel(item.schedule_period, item.schedule_interval);
     const occurrencesRemaining = item.occurrences_remaining;
     const fractionLabel = `${item.occurrences_completed}/${item.target_occurrences}`;
     const progressLabel = isCompleted
       ? `Objectif atteint ${periodLabel} (${fractionLabel})`
       : `Encore ${occurrencesRemaining} fois ${periodLabel} (${fractionLabel})`;
-    const showProgress = item.target_occurrences > 1 || item.frequency_type !== "daily";
+    const showProgress =
+      item.target_occurrences > 1 || item.schedule_interval > 1 || item.frequency_type !== "daily";
 
     const isLoading = completingTaskId === item.id;
 

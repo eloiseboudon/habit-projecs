@@ -53,6 +53,9 @@ backend/app/services/__pycache__/*
 backend/app/utils/__pycache__/*
 backend/migrations/versions/__pycache__/*
 
+# Backend local environment
+backend/.venv/
+
 
 
 tips.md

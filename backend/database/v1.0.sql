@@ -13,12 +13,6 @@ INSERT INTO domains (id, key, name, icon, order_index) VALUES
   (6, 'home',      'Maison & Vie perso',   '🏡', 6)
 ON CONFLICT (id) DO NOTHING;
 
--- REWARDS
-INSERT INTO rewards (id, title, cost_xp, is_active) VALUES
-  (1, 'Badge Bronze', 100, true),
-  (2, 'Badge Argent', 250, true),
-  (3, 'Badge Or',     500, true)
-ON CONFLICT (id) DO NOTHING;
 
 -- TASK TEMPLATES
 -- (corrigé : virgule manquante après la 2e ligne + unités cohérentes)
@@ -84,6 +78,41 @@ INSERT INTO task_templates (id, title, domain_id, default_xp, default_points, un
   (44, 'Nettoyer la cuisine 10 min',          6, 5,  5,  'min',     true),
   (45, 'Faire le lit',                        6, 5,  5,  NULL,      true)
 ON CONFLICT (id) DO NOTHING;
+
+
+
+
+
+-- Table cible : rewards
+-- Colonnes : id | key | type | name | description | condition_type | condition_value | reward_data
+
+INSERT INTO rewards (id, key, type, name, description, condition_type, condition_value, reward_data) VALUES
+-- 🥇 Badges (objectifs simples)
+(1, 'first_task', 'badge', 'Premier pas', 'Tu as accompli ta première action.', 'tasks_completed', '1', '{"icon":"🥇"}'),
+(2, 'five_tasks', 'badge', 'Sur la lancée', '5 actions accomplies !', 'tasks_completed', '5', '{"icon":"🔥"}'),
+(3, 'sport_10', 'badge', 'Sportif régulier', '10 actions liées à la santé.', 'tasks_completed_category:health', '10', '{"icon":"💪"}'),
+(4, 'finance_5', 'badge', 'Fourmi prévoyante', '5 actions dans la catégorie finances.', 'tasks_completed_category:money', '5', '{"icon":"💰"}'),
+(5, 'focus_week', 'badge', 'Semaine Focus', '7 jours consécutifs d’activités.', 'streak_days', '7', '{"icon":"📆"}'),
+(6, 'relation_3', 'badge', 'Connecté', 'Tu as pris soin de tes relations 3 fois.', 'tasks_completed_category:relations', '3', '{"icon":"❤️"}'),
+(7, 'mindset_5', 'badge', 'Sérénité', '5 actions liées au bien-être mental.', 'tasks_completed_category:mindset', '5', '{"icon":"🧘"}'),
+(8, 'money_100', 'badge', 'Épargnant', 'Tu as économisé 100 € au total.', 'finance_savings_total', '100', '{"icon":"💶"}'),
+
+-- 🏆 Trophées (objectifs globaux ou multi-domaines)
+(9, 'balance_80', 'trophy', 'Équilibre parfait', 'Toutes tes barres sont supérieures à 80%.', 'stats_balance', '80', '{"icon":"⚖️"}'),
+(10, 'health_master', 'trophy', 'Maître du corps', '50 actions santé réalisées.', 'tasks_completed_category:health', '50', '{"icon":"🏋️"}'),
+(11, 'work_pro', 'trophy', 'Esprit productif', '50 tâches travail accomplies.', 'tasks_completed_category:work', '50', '{"icon":"💼"}'),
+(12, 'zen_master', 'trophy', 'Maître du mental', '30 actions bien-être.', 'tasks_completed_category:mindset', '30', '{"icon":"🌿"}'),
+(13, 'harmony_30', 'trophy', '30 jours d’harmonie', '30 jours consécutifs d’équilibre.', 'streak_days', '30', '{"icon":"🕊️"}'),
+(14, 'level_10', 'trophy', 'Niveau 10 atteint', 'Tu as atteint le niveau 10 de ton personnage.', 'level_reached', '10', '{"icon":"⭐"}'),
+(15, 'saver_500', 'trophy', 'Bâtisseur', '500 € économisés cumulés.', 'finance_savings_total', '500', '{"icon":"🏦"}'),
+
+-- 🎭 Cosmétiques (équipements ou décorations)
+(16, 'avatar_hat_blue', 'cosmetic', 'Casquette bleue', 'Un style sportif débloqué.', 'unlock_reward', NULL, '{"item":"hat_blue"}'),
+(17, 'avatar_aura_gold', 'cosmetic', 'Aura dorée', 'Récompense d’équilibre parfait.', 'reward_dependency:balance_80', NULL, '{"item":"aura_gold"}'),
+(18, 'avatar_env_city', 'cosmetic', 'Fond urbain', 'Nouvel environnement : skyline urbaine.', 'level_reached', '5', '{"item":"background_city"}'),
+(19, 'avatar_env_nature', 'cosmetic', 'Fond nature', 'Débloqué grâce à ton calme intérieur.', 'tasks_completed_category:mindset', '20', '{"item":"background_forest"}'),
+(20, 'avatar_outfit_neon', 'cosmetic', 'Tenue néon', 'Style spécial pour les joueurs actifs.', 'streak_days', '14', '{"item":"outfit_neon"}');
+
 
 
 -- (Optionnel) réalignement des séquences/identities sur le max(id)

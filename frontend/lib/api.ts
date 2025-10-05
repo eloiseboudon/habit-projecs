@@ -8,6 +8,7 @@ import type {
   TaskListResponse,
   TaskTemplateItem,
   UpdateUserDomainSettingsRequest,
+  UpdateTaskVisibilityRequest,
   UpdateUserProfileRequest,
   UserDomainSetting,
   UserProfile,
@@ -165,6 +166,19 @@ export async function createTask(
 ): Promise<TaskListItem> {
   const response = await fetch(`${API_URL}/users/${userId}/tasks`, {
     method: "POST",
+    headers: buildJsonHeaders(true),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<TaskListItem>(response);
+}
+
+export async function updateTaskVisibility(
+  userId: string,
+  taskId: string,
+  payload: UpdateTaskVisibilityRequest,
+): Promise<TaskListItem> {
+  const response = await fetch(`${API_URL}/users/${userId}/tasks/${taskId}/visibility`, {
+    method: "PATCH",
     headers: buildJsonHeaders(true),
     body: JSON.stringify(payload),
   });

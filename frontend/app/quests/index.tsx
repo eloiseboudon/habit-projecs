@@ -10,7 +10,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -163,7 +162,6 @@ export default function QuestsScreen() {
   const [selectedFrequency, setSelectedFrequency] = useState<TaskFrequency>("daily");
   const [occurrenceCount, setOccurrenceCount] = useState("1");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPersonalInGlobal, setShowPersonalInGlobal] = useState(true);
   const defaultXpReward = 10;
   const occurrencesHelperLabel = useMemo(() => {
     const period = SCHEDULE_PERIOD_BY_FREQUENCY[selectedFrequency];
@@ -185,13 +183,13 @@ export default function QuestsScreen() {
     () => allQuestItems.filter((item) => item.is_custom),
     [allQuestItems],
   );
-  const globalQuestItems = useMemo(
-    () => allQuestItems.filter((item) => !item.is_custom),
-    [allQuestItems],
+  const hiddenPersonalQuestItems = useMemo(
+    () => personalQuestItems.filter((item) => !item.show_in_global),
+    [personalQuestItems],
   );
   const displayedQuestItems = useMemo(
-    () => (showPersonalInGlobal ? allQuestItems : globalQuestItems),
-    [allQuestItems, globalQuestItems, showPersonalInGlobal],
+    () => allQuestItems.filter((item) => !item.is_custom || item.show_in_global),
+    [allQuestItems],
   );
   const domainKeyOverrides = useMemo(() => {
     const overrides = new Map<CategoryKey, string>();
@@ -357,17 +355,19 @@ export default function QuestsScreen() {
       );
     }
 
-    if (!showPersonalInGlobal && personalQuestItems.length > 0) {
+    if (displayedQuestItems.length === 0 && hiddenPersonalQuestItems.length > 0) {
       return (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateLabel}>
-            Vos quêtes personnalisées sont masquées dans la liste principale.
+            {hiddenPersonalQuestItems.length > 1
+              ? "Certaines de vos quêtes personnalisées sont masquées dans la liste principale."
+              : "Votre quête personnalisée est masquée dans la liste principale."}
           </Text>
           <Pressable
             style={[styles.retryButton, styles.showPersonalButton]}
-            onPress={() => setShowPersonalInGlobal(true)}
+            onPress={() => router.push("/quests/personalisation")}
           >
-            <Text style={styles.retryButtonLabel}>Les afficher</Text>
+            <Text style={styles.retryButtonLabel}>Gérer l’affichage</Text>
           </Pressable>
         </View>
       );
@@ -577,56 +577,53 @@ export default function QuestsScreen() {
                     <Feather name="chevron-left" size={24} color="#f8fafc" />
                   </Pressable>
                   <Text style={styles.title}>Mes Quêtes</Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => router.push("/quests/catalogue")}
-                    style={({ pressed }) => [
-                      styles.catalogueButton,
-                      pressed && styles.catalogueButtonPressed,
-                    ]}
-                  >
-                    <Feather name="book-open" size={16} color="#f8fafc" />
-                    <Text style={styles.catalogueButtonLabel}>Catalogue</Text>
-                  </Pressable>
+                  <View style={styles.headerActions}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => router.push("/quests/personalisation")}
+                      style={({ pressed }) => [
+                        styles.catalogueButton,
+                        pressed && styles.catalogueButtonPressed,
+                      ]}
+                    >
+                      <Feather name="sliders" size={16} color="#f8fafc" />
+                      <Text style={styles.catalogueButtonLabel}>Personnalisation</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => router.push("/quests/catalogue")}
+                      style={({ pressed }) => [
+                        styles.catalogueButton,
+                        pressed && styles.catalogueButtonPressed,
+                      ]}
+                    >
+                      <Feather name="book-open" size={16} color="#f8fafc" />
+                      <Text style={styles.catalogueButtonLabel}>Catalogue</Text>
+                    </Pressable>
+                  </View>
                 </View>
                 <View style={styles.personalSection}>
                   <View style={styles.personalHeaderRow}>
                     <Text style={styles.personalTitle}>Quêtes personnalisées</Text>
-                    <View style={styles.personalToggleRow}>
-                      <Text style={styles.personalToggleLabel}>
-                        {showPersonalInGlobal ? "Affichées dans la liste" : "Masquées du global"}
-                      </Text>
-                      <Switch
-                        value={showPersonalInGlobal}
-                        onValueChange={setShowPersonalInGlobal}
-                        trackColor={{ false: "#475569", true: "#7c3aed" }}
-                        thumbColor={showPersonalInGlobal ? "#f8fafc" : "#cbd5f5"}
-                        disabled={personalQuestItems.length === 0}
-                      />
-                    </View>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.personalManageButton,
+                        pressed && styles.personalManageButtonPressed,
+                      ]}
+                      onPress={() => router.push("/quests/personalisation")}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.personalManageLabel}>Gérer</Text>
+                      <Feather name="arrow-right" size={16} color="#cbd5f5" />
+                    </Pressable>
                   </View>
-                  {personalQuestItems.length > 0 ? (
-                    <View style={styles.personalList}>
-                      {personalQuestItems.map((quest) => {
-                        const icon = quest.icon ?? "⭐";
-                        return (
-                          <View key={quest.id} style={styles.personalItem}>
-                            <View style={styles.personalItemHeader}>
-                              <Text style={styles.personalItemIcon}>{icon}</Text>
-                              <Text style={styles.personalItemTitle}>{quest.title}</Text>
-                            </View>
-                            <Text style={styles.personalItemMeta}>
-                              +{quest.xp} XP • {quest.domain_name}
-                            </Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  ) : (
-                    <Text style={styles.personalEmptyLabel}>
-                      Ajoutez une quête personnalisée pour la retrouver ici.
-                    </Text>
-                  )}
+                  <Text style={styles.personalEmptyLabel}>
+                    {personalQuestItems.length === 0
+                      ? "Ajoutez une quête personnalisée pour la retrouver ici."
+                      : hiddenPersonalQuestItems.length > 0
+                        ? `${personalQuestItems.length} quête(s) personnalisée(s) dont ${hiddenPersonalQuestItems.length} masquée(s) du global.`
+                        : "Toutes vos quêtes personnalisées apparaissent dans la liste principale."}
+                  </Text>
                 </View>
               </View>
             }
@@ -681,6 +678,11 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
   },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   catalogueButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -720,44 +722,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
   },
-  personalToggleRow: {
+  personalManageButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-  },
-  personalToggleLabel: {
-    color: "#cbd5f5",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  personalList: {
-    gap: 12,
-  },
-  personalItem: {
-    backgroundColor: "rgba(30, 41, 59, 0.65)",
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.25)",
     gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.4)",
+    backgroundColor: "rgba(30, 41, 59, 0.6)",
   },
-  personalItemHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+  personalManageButtonPressed: {
+    backgroundColor: "rgba(79, 70, 229, 0.35)",
+    borderColor: "rgba(129, 140, 248, 0.6)",
   },
-  personalItemIcon: {
-    fontSize: 16,
-  },
-  personalItemTitle: {
-    color: "#f8fafc",
-    fontSize: 15,
+  personalManageLabel: {
+    color: "#cbd5f5",
+    fontSize: 13,
     fontWeight: "600",
-    flex: 1,
-  },
-  personalItemMeta: {
-    color: "#94a3b8",
-    fontSize: 12,
   },
   personalEmptyLabel: {
     color: "#94a3b8",

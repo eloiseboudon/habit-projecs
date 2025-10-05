@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import BottomNav from "../components/BottomNav";
+import ReadyPlayerMeAvatar from "../components/ReadyPlayerMeAvatar";
 import { getAvatarAsset } from "../constants/avatarAssets";
 import { getAvatarOption } from "../constants/avatarTypes";
 import { useAuth } from "../context/AuthContext";
@@ -89,7 +90,14 @@ export default function Index() {
       <>
         <View style={styles.avatarContainer}>
           <View style={[styles.avatar, { backgroundColor: avatarBackground, borderColor: avatarAccent }]}>
-            {avatarSource ? (
+            {dashboard.avatar_url ? (
+              <ReadyPlayerMeAvatar
+                modelUrl={dashboard.avatar_url}
+                backgroundColor={avatarBackground}
+                accentColor={avatarAccent}
+                style={styles.avatarModel}
+              />
+            ) : avatarSource ? (
               <Image source={avatarSource} style={styles.avatarImage} contentFit="contain" />
             ) : (
               <Text style={styles.avatarInitials}>{dashboard.initials}</Text>
@@ -259,6 +267,10 @@ const styles = StyleSheet.create({
     borderColor: "#1f6feb",
     padding: 2,
     overflow: "hidden",
+  },
+  avatarModel: {
+    width: "100%",
+    height: "100%",
   },
   avatarImage: {
     width: "180%",

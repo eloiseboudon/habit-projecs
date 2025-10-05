@@ -38,6 +38,7 @@ from ..schemas import (
     TaskListItem,
     TaskListResponse,
     TaskTemplateItem,
+    TaskVisibilityUpdateRequest,
     UserDomainSettingItem,
     UserDomainSettingUpdateRequest,
     UserProfile,
@@ -270,6 +271,8 @@ def build_task_list_item(
         period_start=period_start,
         period_end=period_end,
         completed_today=is_completed,
+        is_custom=template is None,
+        show_in_global=user_task.is_favorite,
     )
 
 
@@ -309,7 +312,7 @@ def serialize_domain_settings(session: Session, user_id: UUID) -> list[UserDomai
                 domain_name=domain.name,
                 icon=domain.icon,
                 weekly_target_points=setting.weekly_target_points if setting else 100,
-                is_enabled=setting.is_enabled if setting else False,
+                is_enabled=setting.is_enabled if setting else True,
             )
         )
 
@@ -705,6 +708,86 @@ def create_task(
         domain,
         None,
         occurrences_completed=0,
+        period_start=period_start,
+        period_end=period_end,
+    )
+
+
+@router.patch(
+    "/{user_id}/tasks/{task_id}/visibility",
+    response_model=TaskListItem,
+)
+def update_task_visibility(
+    user_id: UUID,
+    task_id: UUID,
+    payload: TaskVisibilityUpdateRequest,
+    session: Session = Depends(get_db_session),
+) -> TaskListItem:
+    user = resolve_user(session, user_id)
+    settings = ensure_user_settings(session, user)
+    user_timezone = get_user_timezone(user)
+
+    user_task = session.scalar(
+        select(UserTask).where(
+            UserTask.id == task_id,
+            UserTask.user_id == user.id,
+            UserTask.is_active.is_(True),
+        )
+    )
+
+    if not user_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Quête introuvable pour cet utilisateur.",
+        )
+
+    if user_task.template_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Seules les quêtes personnalisées peuvent être masquées.",
+        )
+
+    user_task.is_favorite = payload.show_in_global
+    session.add(user_task)
+    session.commit()
+    session.refresh(user_task)
+
+    domain = session.scalar(select(Domain).where(Domain.id == user_task.domain_id))
+    if not domain:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Domaine introuvable pour cette quête.",
+        )
+
+    schedule_period, schedule_interval = resolve_task_schedule(user_task)
+    now = datetime.now(user_timezone)
+    period_start, period_end = compute_period_window(
+        schedule_period,
+        now=now,
+        first_day_of_week=settings.first_day_of_week,
+        interval=schedule_interval,
+    )
+
+    period_start_utc = period_start.astimezone(timezone.utc)
+    period_end_utc = period_end.astimezone(timezone.utc)
+
+    occurrences_stmt = (
+        select(func.count())
+        .where(
+            TaskLog.user_id == user.id,
+            TaskLog.user_task_id == user_task.id,
+            TaskLog.occurred_at >= period_start_utc,
+            TaskLog.occurred_at <= period_end_utc,
+        )
+        .group_by(TaskLog.user_task_id)
+    )
+    occurrences_completed = int(session.scalar(occurrences_stmt) or 0)
+
+    return build_task_list_item(
+        user_task,
+        domain,
+        None,
+        occurrences_completed=occurrences_completed,
         period_start=period_start,
         period_end=period_end,
     )

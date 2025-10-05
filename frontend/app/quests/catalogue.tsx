@@ -33,6 +33,7 @@ export default function TaskCatalogueScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pendingTemplateId, setPendingTemplateId] = useState<number | null>(null);
+  const [expandedDomains, setExpandedDomains] = useState<Record<number, boolean>>({});
 
   const userId = user?.id ?? null;
 
@@ -103,40 +104,137 @@ export default function TaskCatalogueScreen() {
     [disableTaskTemplate, enableTaskTemplate, loadTemplates, pendingTemplateId, userId],
   );
 
-  const renderTemplateItem = useCallback(
-    ({ item }: { item: TaskTemplateItem }) => {
-      const icon = item.icon ?? "⭐";
-      const isBusy = pendingTemplateId === item.id;
+  const domainGroups = useMemo(() => {
+    const groups: {
+      domainId: number;
+      domainName: string;
+      icon: string | null;
+      templates: TaskTemplateItem[];
+    }[] = [];
+    const map = new Map<number, (typeof groups)[number]>();
+
+    templates.forEach((template) => {
+      let group = map.get(template.domain_id);
+      if (!group) {
+        group = {
+          domainId: template.domain_id,
+          domainName: template.domain_name,
+          icon: template.icon,
+          templates: [],
+        };
+        map.set(template.domain_id, group);
+        groups.push(group);
+      }
+
+      if (!group.icon && template.icon) {
+        group.icon = template.icon;
+      }
+      group.templates.push(template);
+    });
+
+    return groups;
+  }, [templates]);
+
+  type CatalogueListItem =
+    | {
+        type: "domain";
+        domainId: number;
+        domainName: string;
+        icon: string | null;
+        isExpanded: boolean;
+      }
+    | {
+        type: "template";
+        domainId: number;
+        template: TaskTemplateItem;
+      };
+
+  const catalogueItems = useMemo(() => {
+    const items: CatalogueListItem[] = [];
+
+    domainGroups.forEach((group) => {
+      const isExpanded = expandedDomains[group.domainId] ?? false;
+      items.push({
+        type: "domain",
+        domainId: group.domainId,
+        domainName: group.domainName,
+        icon: group.icon,
+        isExpanded,
+      });
+
+      if (isExpanded) {
+        group.templates.forEach((template) => {
+          items.push({ type: "template", domainId: group.domainId, template });
+        });
+      }
+    });
+
+    return items;
+  }, [domainGroups, expandedDomains]);
+
+  const handleToggleDomainVisibility = useCallback((domainId: number) => {
+    setExpandedDomains((previous) => ({
+      ...previous,
+      [domainId]: !(previous[domainId] ?? false),
+    }));
+  }, []);
+
+  const renderCatalogueItem = useCallback(
+    ({ item }: { item: CatalogueListItem }) => {
+      if (item.type === "domain") {
+        const icon = item.icon ?? "⭐";
+        return (
+          <Pressable
+            style={styles.domainHeader}
+            onPress={() => handleToggleDomainVisibility(item.domainId)}
+            accessibilityRole="button"
+          >
+            <View style={styles.domainHeaderLeft}>
+              <Text style={styles.domainIcon}>{icon}</Text>
+              <Text style={styles.domainTitle}>{item.domainName}</Text>
+            </View>
+            <Feather
+              name={item.isExpanded ? "chevron-up" : "chevron-down"}
+              size={20}
+              color="#f8fafc"
+            />
+          </Pressable>
+        );
+      }
+
+      const { template } = item;
+      const icon = template.icon ?? "⭐";
+      const isBusy = pendingTemplateId === template.id;
 
       return (
-        <View style={styles.card}>
+        <View style={[styles.card, styles.templateCard]}>
           <View style={styles.cardContent}>
-            <Text style={styles.cardTitle}>{item.title}</Text>
+            <Text style={styles.cardTitle}>{template.title}</Text>
             <View style={styles.cardMetaRow}>
               <Text style={styles.cardMeta}>
-                {icon} {item.domain_name}
+                {icon} {template.domain_name}
               </Text>
-              <Text style={styles.cardMeta}>+{item.default_xp} XP</Text>
+              <Text style={styles.cardMeta}>+{template.default_xp} XP</Text>
             </View>
-            {item.unit && <Text style={styles.cardUnit}>Unité : {item.unit}</Text>}
+            {template.unit && <Text style={styles.cardUnit}>Unité : {template.unit}</Text>}
           </View>
           <View style={styles.cardAction}>
             {isBusy ? (
               <ActivityIndicator size="small" color="#f8fafc" />
             ) : (
               <Switch
-                value={item.is_enabled}
-                onValueChange={(value) => handleToggleTemplate(item, value)}
+                value={template.is_enabled}
+                onValueChange={(value) => handleToggleTemplate(template, value)}
                 disabled={pendingTemplateId !== null}
                 trackColor={{ false: "#475569", true: "#7c3aed" }}
-                thumbColor={item.is_enabled ? "#f8fafc" : "#cbd5f5"}
+                thumbColor={template.is_enabled ? "#f8fafc" : "#cbd5f5"}
               />
             )}
           </View>
         </View>
       );
     },
-    [handleToggleTemplate, pendingTemplateId],
+    [handleToggleDomainVisibility, handleToggleTemplate, pendingTemplateId],
   );
 
   const listEmptyComponent = useMemo(() => {
@@ -177,9 +275,11 @@ export default function TaskCatalogueScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.screen}>
           <FlatList
-            data={templates}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={renderTemplateItem}
+            data={catalogueItems}
+            keyExtractor={(item) =>
+              item.type === "domain" ? `domain-${item.domainId}` : `template-${item.template.id}`
+            }
+            renderItem={renderCatalogueItem}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={listEmptyComponent}
             refreshControl={
@@ -257,6 +357,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 120,
   },
+  domainHeader: {
+    backgroundColor: "rgba(30, 41, 59, 0.6)",
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: "rgba(99, 102, 241, 0.25)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  domainHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  domainIcon: {
+    fontSize: 18,
+  },
+  domainTitle: {
+    color: "#f8fafc",
+    fontSize: 16,
+    fontWeight: "700",
+  },
   card: {
     backgroundColor: "rgba(30, 41, 59, 0.9)",
     borderRadius: 18,
@@ -267,6 +392,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: "rgba(99, 102, 241, 0.3)",
+  },
+  templateCard: {
+    marginBottom: 12,
+    marginLeft: 12,
   },
   cardContent: {
     flex: 1,

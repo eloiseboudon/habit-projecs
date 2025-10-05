@@ -203,6 +203,8 @@ class TaskListItem(BaseModel):
     period_start: datetime
     period_end: datetime
     completed_today: bool
+    is_custom: bool
+    show_in_global: bool
 
 
 class TaskListResponse(BaseModel):
@@ -298,3 +300,7 @@ class UserProfile(BaseModel):
 
 class UserProfileUpdateRequest(UserProfile):
     pass
+
+
+class TaskVisibilityUpdateRequest(BaseModel):
+    show_in_global: bool

@@ -178,7 +178,19 @@ export default function QuestsScreen() {
     }
   }, [authState.status, navigationState?.key, router]);
 
-  const questItems = useMemo<TaskListItem[]>(() => tasks?.tasks ?? [], [tasks]);
+  const allQuestItems = useMemo<TaskListItem[]>(() => tasks?.tasks ?? [], [tasks]);
+  const personalQuestItems = useMemo(
+    () => allQuestItems.filter((item) => item.is_custom),
+    [allQuestItems],
+  );
+  const hiddenPersonalQuestItems = useMemo(
+    () => personalQuestItems.filter((item) => !item.show_in_global),
+    [personalQuestItems],
+  );
+  const displayedQuestItems = useMemo(
+    () => allQuestItems.filter((item) => !item.is_custom || item.show_in_global),
+    [allQuestItems],
+  );
   const domainKeyOverrides = useMemo(() => {
     const overrides = new Map<CategoryKey, string>();
 
@@ -199,7 +211,7 @@ export default function QuestsScreen() {
       }
     }
 
-    for (const task of questItems) {
+    for (const task of allQuestItems) {
       candidates.push({ key: task.domain_key, name: task.domain_name });
     }
 
@@ -228,9 +240,9 @@ export default function QuestsScreen() {
     }
 
     return overrides;
-  }, [dashboard, questItems]);
+  }, [allQuestItems, dashboard]);
   const isInitialLoading =
-    (status === "loading" || status === "idle") && questItems.length === 0;
+    (status === "loading" || status === "idle") && allQuestItems.length === 0;
 
   const resetForm = () => {
     setNewQuestTitle("");
@@ -332,12 +344,30 @@ export default function QuestsScreen() {
       );
     }
 
-    if (status === "error" && questItems.length === 0) {
+    if (status === "error" && displayedQuestItems.length === 0) {
       return (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateLabel}>{errorMessage ?? "Impossible de charger vos quêtes."}</Text>
           <Pressable style={styles.retryButton} onPress={() => refresh()}>
             <Text style={styles.retryButtonLabel}>Réessayer</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    if (displayedQuestItems.length === 0 && hiddenPersonalQuestItems.length > 0) {
+      return (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateLabel}>
+            {hiddenPersonalQuestItems.length > 1
+              ? "Certaines de vos quêtes personnalisées sont masquées dans la liste principale."
+              : "Votre quête personnalisée est masquée dans la liste principale."}
+          </Text>
+          <Pressable
+            style={[styles.retryButton, styles.showPersonalButton]}
+            onPress={() => router.push("/quests/personalisation")}
+          >
+            <Text style={styles.retryButtonLabel}>Gérer l’affichage</Text>
           </Pressable>
         </View>
       );
@@ -526,7 +556,7 @@ export default function QuestsScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.screen}>
           <FlatList<TaskListItem>
-            data={questItems}
+            data={displayedQuestItems}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
             ListEmptyComponent={ListEmptyComponent}
@@ -547,17 +577,43 @@ export default function QuestsScreen() {
                     <Feather name="chevron-left" size={24} color="#f8fafc" />
                   </Pressable>
                   <Text style={styles.title}>Mes Quêtes</Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => router.push("/quests/catalogue")}
-                    style={({ pressed }) => [
-                      styles.catalogueButton,
-                      pressed && styles.catalogueButtonPressed,
-                    ]}
-                  >
-                    <Feather name="book-open" size={16} color="#f8fafc" />
-                    <Text style={styles.catalogueButtonLabel}>Catalogue</Text>
-                  </Pressable>
+                  <View style={styles.headerActions}>
+
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => router.push("/quests/catalogue")}
+                      style={({ pressed }) => [
+                        styles.catalogueButton,
+                        pressed && styles.catalogueButtonPressed,
+                      ]}
+                    >
+                      <Feather name="book-open" size={16} color="#f8fafc" />
+                      <Text style={styles.catalogueButtonLabel}>Catalogue</Text>
+                    </Pressable>
+                  </View>
+                </View>
+                <View style={styles.personalSection}>
+                  <View style={styles.personalHeaderRow}>
+                    <Text style={styles.personalTitle}>Quêtes personnalisées</Text>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.personalManageButton,
+                        pressed && styles.personalManageButtonPressed,
+                      ]}
+                      onPress={() => router.push("/quests/personalisation")}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.personalManageLabel}>Gérer</Text>
+                      <Feather name="arrow-right" size={16} color="#cbd5f5" />
+                    </Pressable>
+                  </View>
+                  <Text style={styles.personalEmptyLabel}>
+                    {personalQuestItems.length === 0
+                      ? "Ajoutez une quête personnalisée pour la retrouver ici."
+                      : hiddenPersonalQuestItems.length > 0
+                        ? `${personalQuestItems.length} quête(s) personnalisée(s) dont ${hiddenPersonalQuestItems.length} masquée(s) du global.`
+                        : "Toutes vos quêtes personnalisées apparaissent dans la liste principale."}
+                  </Text>
                 </View>
               </View>
             }
@@ -612,6 +668,11 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
   },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   catalogueButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -630,6 +691,50 @@ const styles = StyleSheet.create({
     color: "#f8fafc",
     fontSize: 14,
     fontWeight: "600",
+  },
+  personalSection: {
+    marginTop: 24,
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: "rgba(15, 23, 42, 0.65)",
+    borderWidth: 1,
+    borderColor: "rgba(99, 102, 241, 0.25)",
+    gap: 16,
+  },
+  personalHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  personalTitle: {
+    color: "#e2e8f0",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  personalManageButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.4)",
+    backgroundColor: "rgba(30, 41, 59, 0.6)",
+  },
+  personalManageButtonPressed: {
+    backgroundColor: "rgba(79, 70, 229, 0.35)",
+    borderColor: "rgba(129, 140, 248, 0.6)",
+  },
+  personalManageLabel: {
+    color: "#cbd5f5",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  personalEmptyLabel: {
+    color: "#94a3b8",
+    fontSize: 13,
   },
   taskCard: {
     flexDirection: "row",
@@ -716,6 +821,12 @@ const styles = StyleSheet.create({
   retryButtonLabel: {
     color: "#f8fafc",
     fontWeight: "600",
+  },
+  showPersonalButton: {
+    marginTop: 4,
+    backgroundColor: "rgba(124, 58, 237, 0.35)",
+    borderColor: "rgba(124, 58, 237, 0.65)",
+    borderWidth: 1,
   },
   input: {
     width: "100%",

@@ -55,6 +55,8 @@ export type TaskListItem = {
   period_start: string;
   period_end: string;
   completed_today: boolean;
+  is_custom: boolean;
+  show_in_global: boolean;
 };
 
 export type TaskListResponse = {
@@ -70,6 +72,10 @@ export type CreateTaskRequest = {
   schedule_period: SnapshotPeriod;
   schedule_interval: number;
   target_occurrences: number;
+};
+
+export type UpdateTaskVisibilityRequest = {
+  show_in_global: boolean;
 };
 
 export type TaskTemplateItem = {

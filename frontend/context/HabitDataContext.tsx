@@ -8,6 +8,7 @@ import {
   fetchDashboard,
   fetchProgression,
   fetchTasks,
+  updateTaskVisibility as updateTaskVisibilityApi,
 } from "../lib/api";
 import type {
   CreateTaskRequest,
@@ -34,6 +35,7 @@ type HabitDataContextValue = {
   createTask: (payload: CreateTaskRequest) => Promise<void>;
   enableTaskTemplate: (templateId: number) => Promise<void>;
   disableTaskTemplate: (templateId: number) => Promise<void>;
+  updateTaskVisibility: (taskId: string, showInGlobal: boolean) => Promise<void>;
   isRefreshing: boolean;
 };
 
@@ -167,6 +169,19 @@ export function HabitDataProvider({ children }: { children: React.ReactNode }) {
     [refresh, state.user],
   );
 
+  const updateTaskVisibility = useCallback(
+    async (taskId: string, showInGlobal: boolean) => {
+      if (!state.user) {
+        throw new Error("Utilisateur non chargé");
+      }
+      await updateTaskVisibilityApi(state.user.id, taskId, {
+        show_in_global: showInGlobal,
+      });
+      await refresh();
+    },
+    [refresh, state.user],
+  );
+
   const value = useMemo<HabitDataContextValue>(
     () => ({
       state,
@@ -175,6 +190,7 @@ export function HabitDataProvider({ children }: { children: React.ReactNode }) {
       createTask,
       enableTaskTemplate,
       disableTaskTemplate,
+      updateTaskVisibility,
       isRefreshing,
     }),
     [
@@ -184,6 +200,7 @@ export function HabitDataProvider({ children }: { children: React.ReactNode }) {
       createTask,
       enableTaskTemplate,
       disableTaskTemplate,
+      updateTaskVisibility,
       isRefreshing,
     ],
   );

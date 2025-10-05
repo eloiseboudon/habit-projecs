@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..database import get_session
-from ..models import User
+from ..models import Domain, User, UserDomainSetting
 from ..schemas import AuthResponse, LoginRequest, RegisterRequest, UserSummary
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -61,6 +61,16 @@ def register_user(
     session.add(user)
     session.commit()
     session.refresh(user)
+
+    domains = session.scalars(select(Domain).order_by(Domain.order_index)).all()
+    if domains:
+        session.add_all(
+            [
+                UserDomainSetting(user_id=user.id, domain_id=domain.id)
+                for domain in domains
+            ]
+        )
+        session.commit()
 
     return AuthResponse(user=UserSummary.model_validate(user, from_attributes=True))
 

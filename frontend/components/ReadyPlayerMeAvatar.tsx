@@ -1,23 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useGLTF } from "@react-three/drei";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, View, type ViewStyle } from "react-native";
-import { GLView, type ExpoWebGLRenderingContext } from "expo-gl";
-import { Renderer } from "expo-three";
-import {
-  ACESFilmicToneMapping,
-  AmbientLight,
-  Box3,
-  Clock,
-  Color,
-  DirectionalLight,
-  Mesh,
-  MeshStandardMaterial,
-  Object3D,
-  PerspectiveCamera,
-  Scene,
-  SRGBColorSpace,
-  Vector3,
-} from "three";
-import { GLTFLoader, SkeletonUtils } from "three-stdlib";
+import * as THREE from "three";
 
 type ReadyPlayerMeAvatarProps = {
   modelUrl: string;
@@ -26,54 +11,54 @@ type ReadyPlayerMeAvatarProps = {
   style?: ViewStyle;
 };
 
-type ReadyPlayerMeModelProps = {
-  scene: Scene;
-  loader: GLTFLoader;
-  modelUrl: string;
-  onLoaded: (model: Object3D | null) => void;
-};
+// Composant pour afficher et animer le modèle
+function AvatarModel({ url }: { url: string }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const { scene } = useGLTF(url);
+  const [model] = useState(() => {
+    const cloned = scene.clone();
 
-function configureMaterials(root: Object3D) {
-  root.traverse((child) => {
-    if ((child as Mesh).isMesh) {
-      const mesh = child as Mesh;
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      const material = mesh.material as MeshStandardMaterial | MeshStandardMaterial[] | undefined;
-      if (Array.isArray(material)) {
-        material.forEach((item) => {
-          item.roughness = 0.45;
-          item.metalness = 0.05;
-          item.flatShading = true;
-        });
-      } else if (material) {
-        material.roughness = 0.45;
-        material.metalness = 0.05;
-        material.flatShading = true;
+    // Configure les matériaux pour un rendu cartoon
+    cloned.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        const material = mesh.material as THREE.MeshStandardMaterial | THREE.MeshStandardMaterial[];
+
+        if (Array.isArray(material)) {
+          material.forEach((mat) => {
+            mat.roughness = 0.45;
+            mat.metalness = 0.05;
+            mat.flatShading = true;
+          });
+        } else if (material) {
+          material.roughness = 0.45;
+          material.metalness = 0.05;
+          material.flatShading = true;
+        }
       }
+    });
+
+    // Centre le modèle
+    const box = new THREE.Box3().setFromObject(cloned);
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    cloned.position.sub(center);
+    cloned.position.y -= box.min.y;
+
+    return cloned;
+  });
+
+  // Animation oscillante
+  useFrame((state) => {
+    if (groupRef.current) {
+      const elapsed = state.clock.getElapsedTime();
+      groupRef.current.rotation.y = Math.sin(elapsed * 0.3) * 0.2;
     }
   });
-}
 
-function loadReadyPlayerMeModel({ scene, loader, modelUrl, onLoaded }: ReadyPlayerMeModelProps) {
-  loader.load(
-    modelUrl,
-    (gltf) => {
-      const model = SkeletonUtils.clone(gltf.scene);
-      configureMaterials(model);
-      const box = new Box3().setFromObject(model);
-      const center = new Vector3();
-      box.getCenter(center);
-      model.position.sub(center);
-      model.position.y -= box.min.y;
-      scene.add(model);
-      onLoaded(model);
-    },
-    undefined,
-    () => {
-      onLoaded(null);
-    },
-  );
+  return <primitive ref={groupRef} object={model} />;
 }
 
 export default function ReadyPlayerMeAvatar({
@@ -83,115 +68,52 @@ export default function ReadyPlayerMeAvatar({
   style,
 }: ReadyPlayerMeAvatarProps) {
   const [isLoaded, setIsLoaded] = useState(false);
-  const cleanupRef = useRef<(() => void) | null>(null);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    return () => {
-      if (cleanupRef.current) {
-        cleanupRef.current();
-        cleanupRef.current = null;
-      }
-    };
-  }, []);
-
+  // Réinitialise l'état quand l'URL change
   useEffect(() => {
     setIsLoaded(false);
+    setError(false);
   }, [modelUrl]);
-
-  const handleContextCreate = useCallback(
-    async (gl: ExpoWebGLRenderingContext) => {
-      if (cleanupRef.current) {
-        cleanupRef.current();
-        cleanupRef.current = null;
-      }
-
-      const { drawingBufferWidth: width, drawingBufferHeight: height } = gl;
-      const renderer = new Renderer({ gl, antialias: true });
-      renderer.setSize(width, height);
-      renderer.toneMapping = ACESFilmicToneMapping;
-      renderer.outputColorSpace = SRGBColorSpace;
-      renderer.setClearColor(new Color(backgroundColor));
-
-      const scene = new Scene();
-      scene.background = new Color(backgroundColor);
-
-      const camera = new PerspectiveCamera(30, width / height, 0.1, 100);
-      camera.position.set(0, 1.1, 2);
-
-      const ambientLight = new AmbientLight(0xffffff, 0.9);
-      const keyLight = new DirectionalLight(new Color(accentColor), 1.2);
-      keyLight.position.set(5, 5, 5);
-      const fillLight = new DirectionalLight(0xffffff, 0.6);
-      fillLight.position.set(-4, 4, -2);
-      scene.add(ambientLight, keyLight, fillLight);
-
-      const clock = new Clock();
-      const loader = new GLTFLoader();
-      const modelRef = { current: null as Object3D | null };
-      let disposed = false;
-
-      loadReadyPlayerMeModel({
-        scene,
-        loader,
-        modelUrl,
-        onLoaded: (model) => {
-          if (disposed) {
-            return;
-          }
-          modelRef.current = model;
-          setIsLoaded(Boolean(model));
-        },
-      });
-
-      let frameId = 0;
-      const animate = () => {
-        if (disposed) {
-          return;
-        }
-        frameId = requestAnimationFrame(animate);
-        if (modelRef.current) {
-          const elapsed = clock.getElapsedTime();
-          modelRef.current.rotation.y = Math.sin(elapsed * 0.3) * 0.2;
-        }
-        renderer.render(scene, camera);
-        gl.endFrameEXP();
-      };
-      animate();
-
-      cleanupRef.current = () => {
-        disposed = true;
-        cancelAnimationFrame(frameId);
-        scene.traverse((object) => {
-          if ((object as Mesh).isMesh) {
-            const mesh = object as Mesh;
-            mesh.geometry.dispose();
-            const material = mesh.material as MeshStandardMaterial | MeshStandardMaterial[] | undefined;
-            if (Array.isArray(material)) {
-              material.forEach((item) => item.dispose());
-            } else if (material) {
-              material.dispose();
-            }
-          }
-        });
-        renderer.dispose();
-      };
-    },
-    [accentColor, backgroundColor, modelUrl],
-  );
 
   return (
     <View style={[styles.container, { backgroundColor }, style]}>
-      <GLView
-        key={modelUrl}
-        style={StyleSheet.absoluteFill}
-        onContextCreate={handleContextCreate}
-        pointerEvents="none"
-      />
-      {!isLoaded ? (
+      <Canvas
+        camera={{ position: [0, 1.1, 2], fov: 30 }}
+        gl={{
+          antialias: true,
+          toneMapping: THREE.ACESFilmicToneMapping,
+          outputColorSpace: THREE.SRGBColorSpace,
+        }}
+        onCreated={({ gl }) => {
+          gl.setClearColor(new THREE.Color(backgroundColor));
+        }}
+      >
+        {/* Lumières */}
+        <ambientLight intensity={0.9} />
+        <directionalLight
+          position={[5, 5, 5]}
+          intensity={1.2}
+          color={accentColor}
+        />
+        <directionalLight
+          position={[-4, 4, -2]}
+          intensity={0.6}
+          color="#ffffff"
+        />
+
+        {/* Modèle avec chargement progressif */}
+        <Suspense fallback={null}>
+          <AvatarModel url={modelUrl} />
+        </Suspense>
+      </Canvas>
+
+      {/* Indicateur de chargement */}
+      {!isLoaded && !error && (
         <View style={styles.loader} pointerEvents="none">
           <ActivityIndicator color={accentColor} />
         </View>
-      ) : null}
+      )}
     </View>
   );
 }

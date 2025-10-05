@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -117,7 +118,7 @@ export default function ReadyPlayerMeCreatorModal({
           onAvatarExported(parsed.avatarUrl);
         }
       } catch (error) {
-        // Ignore malformed messages.
+        // Ignore malformed messages
       }
     },
     [onAvatarExported],
@@ -144,7 +145,7 @@ export default function ReadyPlayerMeCreatorModal({
             domStorageEnabled
             allowsInlineMediaPlayback
             onMessage={handleMessage}
-            mixedContentMode="alwaysAllow"
+            {...(Platform.OS === 'android' && { mixedContentMode: 'compatibility' })}
           />
           {isLoading ? (
             <View style={styles.webviewLoader} pointerEvents="none">

@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "es2019",
+    "module": "commonjs",
+    "moduleResolution": "node10",
+    "esModuleInterop": true,
+    "strict": true,
+    "outDir": "./tests-dist",
+    "noEmit": false,
+    "types": ["node"],
+    "skipLibCheck": true
+  },
+  "include": [
+    "lib/navigation.ts",
+    "tests/navigation.test.ts"
+  ]
+}

@@ -1,11 +1,7 @@
 import { usePathname, useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-const NAV_ITEMS = [
-  { label: "Accueil", route: "/" },
-  { label: "Quêtes", route: "/quests" },
-  { label: "Progression", route: "/progression" },
-];
+import { NAV_ITEMS, isRouteActive, shouldNavigate } from "../lib/navigation";
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -14,14 +10,14 @@ export default function BottomNav() {
   return (
     <View style={styles.container}>
       {NAV_ITEMS.map((item) => {
-        const isActive = pathname === item.route;
+        const isActive = isRouteActive(pathname, item.route);
 
         return (
           <Pressable
             key={item.route}
             style={[styles.navButton, isActive && styles.navButtonActive]}
             onPress={() => {
-              if (!isActive) {
+              if (shouldNavigate(pathname, item.route)) {
                 router.push(item.route as never);
               }
             }}

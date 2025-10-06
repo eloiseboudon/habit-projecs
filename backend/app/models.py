@@ -99,6 +99,12 @@ class User(Base, TimestampMixin):
     snapshots: Mapped[list["ProgressSnapshot"]] = relationship(
         "ProgressSnapshot", back_populates="user", cascade="all, delete-orphan"
     )
+    rewards: Mapped[list["UserReward"]] = relationship(
+        "UserReward", back_populates="user", cascade="all, delete-orphan"
+    )
+    cosmetics: Mapped[list["UserCosmetic"]] = relationship(
+        "UserCosmetic", back_populates="user", cascade="all, delete-orphan"
+    )
     user_settings: Mapped["UserSettings"] = relationship(
         "UserSettings",
         back_populates="user",
@@ -444,7 +450,7 @@ class Reward(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     condition_type: Mapped[str] = mapped_column(String(120), nullable=False)
     condition_value: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    reward_data: Mapped[dict[str, Any]] = mapped_column(
+    reward_data: Mapped[Any] = mapped_column(
         JSONB, nullable=False, default=dict
     )
 
@@ -456,21 +462,31 @@ class Reward(Base):
 class UserReward(Base):
     __tablename__ = "user_rewards"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
     reward_id: Mapped[int] = mapped_column(
-        ForeignKey("rewards.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("rewards.id", ondelete="CASCADE"), primary_key=True
     )
-    acquired_at: Mapped[datetime] = mapped_column(
+    date_obtained: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    seen: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
-    user: Mapped[User] = relationship("User")
+    user: Mapped[User] = relationship("User", back_populates="rewards")
     reward: Mapped[Reward] = relationship("Reward", back_populates="user_rewards")
+
+
+class UserCosmetic(Base):
+    __tablename__ = "user_cosmetics"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    item_key: Mapped[str] = mapped_column(String(120), primary_key=True)
+    equipped: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    user: Mapped[User] = relationship("User", back_populates="cosmetics")
 
 
 class UserSettings(Base):

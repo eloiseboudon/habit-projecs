@@ -236,19 +236,29 @@ def upgrade() -> None:
     )
     op.create_table(
         'user_rewards',
-        sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('user_id', sa.UUID(), nullable=False),
         sa.Column('reward_id', sa.Integer(), nullable=False),
         sa.Column(
-            'acquired_at',
+            'date_obtained',
             sa.DateTime(timezone=True),
             server_default=sa.text('now()'),
             nullable=False,
         ),
+        sa.Column('seen', sa.Boolean(), nullable=False, server_default=sa.text('false')),
         sa.ForeignKeyConstraint(['reward_id'], ['rewards.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id'),
+        sa.PrimaryKeyConstraint('user_id', 'reward_id'),
     )
+    op.alter_column('user_rewards', 'seen', server_default=None)
+    op.create_table(
+        'user_cosmetics',
+        sa.Column('user_id', sa.UUID(), nullable=False),
+        sa.Column('item_key', sa.String(length=120), nullable=False),
+        sa.Column('equipped', sa.Boolean(), nullable=False, server_default=sa.text('false')),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('user_id', 'item_key'),
+    )
+    op.alter_column('user_cosmetics', 'equipped', server_default=None)
     op.create_table(
         'user_settings',
         sa.Column('user_id', sa.UUID(), nullable=False),
@@ -416,6 +426,7 @@ def downgrade() -> None:
     op.drop_index('ix_xp_events_user_occurred', table_name='xp_events')
     op.drop_table('xp_events')
     op.drop_table('user_settings')
+    op.drop_table('user_cosmetics')
     op.drop_table('user_rewards')
     op.drop_table('user_level')
     op.drop_table('user_domain_settings')

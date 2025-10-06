@@ -17,10 +17,11 @@ import {
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import BottomNav from "../../components/BottomNav";
+import RewardUnlockModal from "../../components/RewardUnlockModal";
 import { CATEGORIES, CATEGORY_OPTIONS, type CategoryKey } from "../../constants/categories";
 import { useAuth } from "../../context/AuthContext";
 import { useHabitData } from "../../context/HabitDataContext";
-import type { SnapshotPeriod, TaskFrequency, TaskListItem } from "../../types/api";
+import type { RewardUnlock, SnapshotPeriod, TaskFrequency, TaskListItem } from "../../types/api";
 
 const FREQUENCY_CHOICES: { value: TaskFrequency; label: string; periodLabel: string }[] = [
   { value: "daily", label: "Quotidienne", periodLabel: "aujourd’hui" },
@@ -38,6 +39,44 @@ const PERIOD_HELPER_BY_SCHEDULE: Record<SnapshotPeriod, string> = {
   day: "par jour",
   week: "par semaine",
   month: "par mois",
+};
+
+const REWARD_TYPE_LABELS: Record<string, string> = {
+  badge: "Badge",
+  trophy: "Trophée",
+  cosmetic: "Récompense",
+};
+
+const resolveRewardIcon = (reward: RewardUnlock | null): string => {
+  if (!reward) {
+    return "🎉";
+  }
+
+  const data = reward.reward_data;
+  if (data && typeof data === "object" && "icon" in data) {
+    const iconValue = (data as { icon?: unknown }).icon;
+    if (typeof iconValue === "string" && iconValue.trim().length > 0) {
+      return iconValue;
+    }
+  }
+
+  switch (reward.type) {
+    case "badge":
+      return "🥇";
+    case "trophy":
+      return "🏆";
+    case "cosmetic":
+      return "🎁";
+    default:
+      return "🎉";
+  }
+};
+
+const resolveRewardTypeLabel = (reward: RewardUnlock | null): string => {
+  if (!reward) {
+    return REWARD_TYPE_LABELS.badge;
+  }
+  return REWARD_TYPE_LABELS[reward.type] ?? "Récompense";
 };
 
 function formatScheduleLabel(period: SnapshotPeriod, interval: number): string {
@@ -162,6 +201,9 @@ export default function QuestsScreen() {
   const [selectedFrequency, setSelectedFrequency] = useState<TaskFrequency>("daily");
   const [occurrenceCount, setOccurrenceCount] = useState("1");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingRewards, setPendingRewards] = useState<RewardUnlock[]>([]);
+  const [currentReward, setCurrentReward] = useState<RewardUnlock | null>(null);
+  const [isRewardModalVisible, setIsRewardModalVisible] = useState(false);
   const defaultXpReward = 10;
   const occurrencesHelperLabel = useMemo(() => {
     const period = SCHEDULE_PERIOD_BY_FREQUENCY[selectedFrequency];
@@ -177,6 +219,28 @@ export default function QuestsScreen() {
       router.replace("/login");
     }
   }, [authState.status, navigationState?.key, router]);
+
+  useEffect(() => {
+    if (!currentReward && pendingRewards.length > 0) {
+      const [nextReward] = pendingRewards;
+      if (nextReward) {
+        setCurrentReward(nextReward);
+        setPendingRewards((previous) => previous.slice(1));
+        setIsRewardModalVisible(true);
+      }
+    }
+  }, [currentReward, pendingRewards]);
+
+  const handleRewardModalHidden = useCallback(() => {
+    setIsRewardModalVisible(false);
+    setCurrentReward(null);
+  }, []);
+
+  const rewardIcon = useMemo(() => resolveRewardIcon(currentReward), [currentReward]);
+  const rewardTypeLabel = useMemo(
+    () => resolveRewardTypeLabel(currentReward),
+    [currentReward],
+  );
 
   const allQuestItems = useMemo<TaskListItem[]>(() => tasks?.tasks ?? [], [tasks]);
   const personalQuestItems = useMemo(
@@ -311,7 +375,10 @@ export default function QuestsScreen() {
 
       try {
         setCompletingTaskId(task.id);
-        await completeTask(task.id);
+        const unlocked = await completeTask(task.id);
+        if (unlocked.length > 0) {
+          setPendingRewards((previous) => [...previous, ...unlocked]);
+        }
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Impossible d'enregistrer cette tâche.";
@@ -617,6 +684,13 @@ export default function QuestsScreen() {
                 </View>
               </View>
             }
+          />
+          <RewardUnlockModal
+            visible={isRewardModalVisible && currentReward !== null}
+            icon={rewardIcon}
+            rewardName={currentReward?.name ?? ""}
+            rewardTypeLabel={rewardTypeLabel}
+            onHidden={handleRewardModalHidden}
           />
           <BottomNav />
         </View>

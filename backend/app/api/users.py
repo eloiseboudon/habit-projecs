@@ -21,6 +21,8 @@ from ..models import (
     Streak,
     TaskLog,
     TaskTemplate,
+    Reward,
+    UserReward,
     User,
     UserDomainSetting,
     UserLevel,
@@ -1031,6 +1033,33 @@ def get_progression(user_id: UUID, session: Session = Depends(get_db_session)) -
             )
         )
 
+    reward_stmt = (
+        select(UserReward, Reward)
+        .join(Reward, Reward.id == UserReward.reward_id)
+        .where(UserReward.user_id == user_id)
+        .order_by(UserReward.date_obtained.desc())
+    )
+
+    reward_badges: list[BadgeItem] = []
+    for user_reward, reward in session.execute(reward_stmt):
+        icon: str | None = None
+        data = reward.reward_data
+        if isinstance(data, dict):
+            candidate = data.get("icon")
+            icon = candidate if isinstance(candidate, str) else None
+        elif isinstance(data, str):
+            icon = data
+
+        reward_badges.append(
+            BadgeItem(
+                id=f"reward-{user_reward.reward_id}",
+                title=reward.name,
+                subtitle=reward.description,
+                domain_id=None,
+                icon=icon,
+            )
+        )
+
     streak_stmt = (
         select(Streak, Domain)
         .join(Domain, Streak.domain_id == Domain.id)
@@ -1038,16 +1067,19 @@ def get_progression(user_id: UUID, session: Session = Depends(get_db_session)) -
         .order_by(Streak.current_streak_days.desc())
     )
 
-    badges: list[BadgeItem] = []
+    streak_badges: list[BadgeItem] = []
     for streak, domain in session.execute(streak_stmt):
-        badges.append(
+        streak_badges.append(
             BadgeItem(
                 id=f"streak-{streak.id}",
                 title=f"{streak.current_streak_days} jours consécutifs",
                 subtitle=f"{domain.name} • Meilleur : {streak.best_streak_days} jours",
                 domain_id=domain.id,
+                icon=domain.icon,
             )
         )
+
+    badges = reward_badges + streak_badges
 
     return ProgressionResponse(
         user_id=user_id,

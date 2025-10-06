@@ -8,6 +8,7 @@ Create Date: 2025-10-05 15:31:40.790090
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'c1bba60d4bb8'
@@ -41,22 +42,26 @@ def upgrade() -> None:
     op.create_table(
         'rewards',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column('title', sa.String(length=255), nullable=False),
-        sa.Column('cost_xp', sa.Integer(), nullable=False),
-        sa.Column('is_active', sa.Boolean(), nullable=False),
+        sa.Column('key', sa.String(length=120), nullable=False),
+        sa.Column('type', sa.String(length=50), nullable=False),
+        sa.Column('name', sa.String(length=255), nullable=False),
+        sa.Column('description', sa.Text(), nullable=False),
+        sa.Column('condition_type', sa.String(length=120), nullable=False),
+        sa.Column('condition_value', sa.String(length=255), nullable=True),
         sa.Column(
-            'created_at',
-            sa.DateTime(timezone=True),
-            server_default=sa.text('now()'),
+            'reward_data',
+            postgresql.JSONB(astext_type=sa.Text()),
             nullable=False,
-        ),
-        sa.Column(
-            'updated_at',
-            sa.DateTime(timezone=True),
-            server_default=sa.text('now()'),
-            nullable=False,
+            server_default=sa.text("'{}'::jsonb"),
         ),
         sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('key', name='uq_reward_key'),
+    )
+    op.alter_column(
+        'rewards',
+        'reward_data',
+        server_default=None,
+        existing_type=postgresql.JSONB(astext_type=sa.Text()),
     )
     op.create_table(
         'users',
@@ -231,19 +236,29 @@ def upgrade() -> None:
     )
     op.create_table(
         'user_rewards',
-        sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('user_id', sa.UUID(), nullable=False),
         sa.Column('reward_id', sa.Integer(), nullable=False),
         sa.Column(
-            'acquired_at',
+            'date_obtained',
             sa.DateTime(timezone=True),
             server_default=sa.text('now()'),
             nullable=False,
         ),
+        sa.Column('seen', sa.Boolean(), nullable=False, server_default=sa.text('false')),
         sa.ForeignKeyConstraint(['reward_id'], ['rewards.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id'),
+        sa.PrimaryKeyConstraint('user_id', 'reward_id'),
     )
+    op.alter_column('user_rewards', 'seen', server_default=None)
+    op.create_table(
+        'user_cosmetics',
+        sa.Column('user_id', sa.UUID(), nullable=False),
+        sa.Column('item_key', sa.String(length=120), nullable=False),
+        sa.Column('equipped', sa.Boolean(), nullable=False, server_default=sa.text('false')),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('user_id', 'item_key'),
+    )
+    op.alter_column('user_cosmetics', 'equipped', server_default=None)
     op.create_table(
         'user_settings',
         sa.Column('user_id', sa.UUID(), nullable=False),
@@ -411,6 +426,7 @@ def downgrade() -> None:
     op.drop_index('ix_xp_events_user_occurred', table_name='xp_events')
     op.drop_table('xp_events')
     op.drop_table('user_settings')
+    op.drop_table('user_cosmetics')
     op.drop_table('user_rewards')
     op.drop_table('user_level')
     op.drop_table('user_domain_settings')

@@ -3,7 +3,7 @@ from __future__ import annotations
 import enum
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -46,6 +46,18 @@ class TaskLogCreate(BaseModel):
     source: str = Field(default="manual")
 
 
+class RewardRead(BaseModel):
+    id: int
+    key: str
+    type: str
+    name: str
+    description: str
+    reward_data: dict[str, Any] | None = None
+
+    class Config:
+        model_config = ConfigDict(from_attributes=True)
+
+
 class TaskLogRead(BaseModel):
     id: UUID
     user_id: UUID
@@ -58,6 +70,7 @@ class TaskLogRead(BaseModel):
     xp_awarded: int
     points_awarded: int
     source: str
+    unlocked_rewards: list[RewardRead] = Field(default_factory=list)
 
     class Config:
         model_config = ConfigDict(from_attributes=True)
@@ -260,6 +273,7 @@ class BadgeItem(BaseModel):
     title: str
     subtitle: str
     domain_id: Optional[int]
+    icon: Optional[str] = None
 
 
 class ProgressionResponse(BaseModel):

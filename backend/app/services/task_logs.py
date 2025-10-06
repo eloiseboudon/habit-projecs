@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from ..models import (
     Domain,
     ProgressSnapshot,
+    Reward,
     SnapshotPeriod,
     SourceType,
     Streak,
@@ -23,6 +24,7 @@ from ..models import (
     XPEvent,
 )
 from ..schemas import TaskLogCreate
+from .rewards import check_rewards
 
 
 class TaskLogError(Exception):
@@ -194,7 +196,7 @@ def monday_start(date_value: date) -> date:
     return date_value - timedelta(days=date_value.weekday())
 
 
-def create_task_log(session: Session, payload: TaskLogCreate) -> TaskLog:
+def create_task_log(session: Session, payload: TaskLogCreate) -> tuple[TaskLog, list[Reward]]:
     """Create a task log following MVP rules."""
 
     user = ensure_user_exists(session, payload.user_id)
@@ -276,4 +278,6 @@ def create_task_log(session: Session, payload: TaskLogCreate) -> TaskLog:
         occurred_at,
     )
 
-    return task_log
+    unlocked_rewards = check_rewards(session, payload.user_id)
+
+    return task_log, unlocked_rewards

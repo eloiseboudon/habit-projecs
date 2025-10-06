@@ -13,6 +13,7 @@ import type {
   UserDomainSetting,
   UserProfile,
   UserSummary,
+  TaskLogResponse,
 } from "../types/api";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
@@ -197,7 +198,7 @@ export async function fetchProgression(
 export async function completeTaskLog(
   userId: string,
   userTaskId: string,
-): Promise<void> {
+): Promise<TaskLogResponse> {
   const response = await fetch(`${API_URL}/task-logs`, {
     method: "POST",
     headers: buildJsonHeaders(true),
@@ -211,6 +212,8 @@ export async function completeTaskLog(
     const message = await extractErrorMessage(response);
     throw new Error(message || "Impossible d'enregistrer la complétion de la tâche");
   }
+
+  return handleResponse<TaskLogResponse>(response);
 }
 
 export async function fetchUserTaskTemplates(

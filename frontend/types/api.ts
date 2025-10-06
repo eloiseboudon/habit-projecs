@@ -111,6 +111,30 @@ export type WeeklyStat = {
   weekly_xp: number;
 };
 
+export type RewardUnlock = {
+  id: number;
+  key: string;
+  type: string;
+  name: string;
+  description: string;
+  reward_data: Record<string, unknown> | null;
+};
+
+export type TaskLogResponse = {
+  id: string;
+  user_id: string;
+  user_task_id: string | null;
+  domain_id: number;
+  occurred_at: string;
+  quantity: string | null;
+  unit: string | null;
+  notes: string | null;
+  xp_awarded: number;
+  points_awarded: number;
+  source: string;
+  unlocked_rewards: RewardUnlock[];
+};
+
 export type BadgeItem = {
   id: string;
   title: string;

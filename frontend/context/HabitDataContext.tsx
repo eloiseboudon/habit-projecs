@@ -14,6 +14,7 @@ import type {
   CreateTaskRequest,
   DashboardResponse,
   ProgressionResponse,
+  RewardUnlock,
   TaskListResponse,
   UserSummary,
 } from "../types/api";
@@ -31,7 +32,7 @@ type HabitDataState = {
 type HabitDataContextValue = {
   state: HabitDataState;
   refresh: () => Promise<void>;
-  completeTask: (taskId: string) => Promise<void>;
+  completeTask: (taskId: string) => Promise<RewardUnlock[]>;
   createTask: (payload: CreateTaskRequest) => Promise<void>;
   enableTaskTemplate: (templateId: number) => Promise<void>;
   disableTaskTemplate: (templateId: number) => Promise<void>;
@@ -130,8 +131,9 @@ export function HabitDataProvider({ children }: { children: React.ReactNode }) {
       if (!state.user) {
         throw new Error("Utilisateur non chargé");
       }
-      await completeTaskLog(state.user.id, taskId);
+      const taskLog = await completeTaskLog(state.user.id, taskId);
       await refresh();
+      return taskLog.unlocked_rewards ?? [];
     },
     [refresh, state.user],
   );

@@ -8,6 +8,7 @@ Create Date: 2025-10-05 15:31:40.790090
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'c1bba60d4bb8'
@@ -41,22 +42,26 @@ def upgrade() -> None:
     op.create_table(
         'rewards',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column('title', sa.String(length=255), nullable=False),
-        sa.Column('cost_xp', sa.Integer(), nullable=False),
-        sa.Column('is_active', sa.Boolean(), nullable=False),
+        sa.Column('key', sa.String(length=120), nullable=False),
+        sa.Column('type', sa.String(length=50), nullable=False),
+        sa.Column('name', sa.String(length=255), nullable=False),
+        sa.Column('description', sa.Text(), nullable=False),
+        sa.Column('condition_type', sa.String(length=120), nullable=False),
+        sa.Column('condition_value', sa.String(length=255), nullable=True),
         sa.Column(
-            'created_at',
-            sa.DateTime(timezone=True),
-            server_default=sa.text('now()'),
+            'reward_data',
+            postgresql.JSONB(astext_type=sa.Text()),
             nullable=False,
-        ),
-        sa.Column(
-            'updated_at',
-            sa.DateTime(timezone=True),
-            server_default=sa.text('now()'),
-            nullable=False,
+            server_default=sa.text("'{}'::jsonb"),
         ),
         sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('key', name='uq_reward_key'),
+    )
+    op.alter_column(
+        'rewards',
+        'reward_data',
+        server_default=None,
+        existing_type=postgresql.JSONB(astext_type=sa.Text()),
     )
     op.create_table(
         'users',

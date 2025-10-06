@@ -6,6 +6,7 @@ import enum
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -21,7 +22,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from .database import Base
@@ -432,13 +433,20 @@ class UserChallenge(Base):
     )
 
 
-class Reward(Base, TimestampMixin):
+class Reward(Base):
     __tablename__ = "rewards"
+    __table_args__ = (UniqueConstraint("key", name="uq_reward_key"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
-    cost_xp: Mapped[int] = mapped_column(Integer, nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    key: Mapped[str] = mapped_column(String(120), nullable=False)
+    type: Mapped[str] = mapped_column(String(50), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    condition_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    condition_value: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reward_data: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict
+    )
 
     user_rewards: Mapped[list["UserReward"]] = relationship(
         "UserReward", back_populates="reward"

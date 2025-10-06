@@ -23,6 +23,7 @@ from ..models import (
     XPEvent,
 )
 from ..schemas import TaskLogCreate
+from .rewards import check_rewards
 
 
 class TaskLogError(Exception):
@@ -275,5 +276,7 @@ def create_task_log(session: Session, payload: TaskLogCreate) -> TaskLog:
         points_awarded,
         occurred_at,
     )
+
+    check_rewards(session, payload.user_id)
 
     return task_log

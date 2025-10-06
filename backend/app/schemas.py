@@ -260,6 +260,7 @@ class BadgeItem(BaseModel):
     title: str
     subtitle: str
     domain_id: Optional[int]
+    icon: Optional[str] = None
 
 
 class ProgressionResponse(BaseModel):

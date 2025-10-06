@@ -140,6 +140,7 @@ export type BadgeItem = {
   title: string;
   subtitle: string;
   domain_id: number | null;
+  icon: string | null;
 };
 
 export type ProgressionResponse = {

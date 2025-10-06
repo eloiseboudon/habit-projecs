@@ -160,7 +160,7 @@ export default function ProgressionScreen() {
                   ) : (
                     badges.map((badge) => (
                       <View key={badge.id} style={styles.badgeRow}>
-                        <Text style={styles.badgeIcon}>🏆</Text>
+                        <Text style={styles.badgeIcon}>{badge.icon ?? "🏆"}</Text>
                         <View style={styles.badgeContent}>
                           <Text style={styles.badgeTitle}>{badge.title}</Text>
                           <Text style={styles.badgeSubtitle}>{badge.subtitle}</Text>

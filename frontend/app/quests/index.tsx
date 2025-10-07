@@ -9,6 +9,7 @@ import {
   ListRenderItemInfo,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -22,24 +23,12 @@ import { CATEGORIES, CATEGORY_OPTIONS, type CategoryKey } from "../../constants/
 import { useAuth } from "../../context/AuthContext";
 import { useHabitData } from "../../context/HabitDataContext";
 import type { RewardUnlock, SnapshotPeriod, TaskFrequency, TaskListItem } from "../../types/api";
-
-const FREQUENCY_CHOICES: { value: TaskFrequency; label: string; periodLabel: string }[] = [
-  { value: "daily", label: "Quotidienne", periodLabel: "aujourd’hui" },
-  { value: "weekly", label: "Hebdomadaire", periodLabel: "cette semaine" },
-  { value: "monthly", label: "Mensuelle", periodLabel: "ce mois-ci" },
-];
-
-const SCHEDULE_PERIOD_BY_FREQUENCY: Record<TaskFrequency, SnapshotPeriod> = {
-  daily: "day",
-  weekly: "week",
-  monthly: "month",
-};
-
-const PERIOD_HELPER_BY_SCHEDULE: Record<SnapshotPeriod, string> = {
-  day: "par jour",
-  week: "par semaine",
-  month: "par mois",
-};
+import {
+  FREQUENCY_CHOICES,
+  SCHEDULE_PERIOD_BY_FREQUENCY,
+  PERIOD_HELPER_BY_SCHEDULE,
+  buildDomainKeyOverrides,
+} from "../../utils/quests";
 
 const REWARD_TYPE_LABELS: Record<string, string> = {
   badge: "Badge",
@@ -180,6 +169,177 @@ const QuestListItem = memo(({ item, onToggle, isLoading }: QuestListItemProps) =
 
 QuestListItem.displayName = "QuestListItem";
 
+type AddQuestSectionProps = {
+  showAddTask: boolean;
+  isSubmitting: boolean;
+  onStartAdd: () => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+  onChangeTitle: (value: string) => void;
+  newQuestTitle: string;
+  onSelectCategory: (value: CategoryKey) => void;
+  selectedCategory: CategoryKey;
+  occurrencesHelperLabel: string;
+  selectedFrequency: TaskFrequency;
+  onSelectFrequency: (value: TaskFrequency) => void;
+  occurrenceCount: string;
+  onChangeOccurrenceCount: (value: string) => void;
+};
+
+function AddQuestSection({
+  showAddTask,
+  isSubmitting,
+  onStartAdd,
+  onCancel,
+  onSubmit,
+  onChangeTitle,
+  newQuestTitle,
+  onSelectCategory,
+  selectedCategory,
+  occurrencesHelperLabel,
+  selectedFrequency,
+  onSelectFrequency,
+  occurrenceCount,
+  onChangeOccurrenceCount,
+}: AddQuestSectionProps) {
+  return (
+    <View style={styles.addSection}>
+      {!showAddTask ? (
+        <Pressable
+          style={({ pressed }) => [
+            styles.addTaskButton,
+            pressed && styles.addTaskButtonPressed,
+          ]}
+          onPress={onStartAdd}
+          disabled={isSubmitting}
+        >
+          <LinearGradient
+            colors={["#7c3aed", "#ec4899"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.addTaskGradient}
+          >
+            <Feather name="plus" size={20} color="#f8fafc" />
+            <Text style={styles.addTaskButtonLabel}>Ajouter une quête</Text>
+          </LinearGradient>
+        </Pressable>
+      ) : (
+        <View style={styles.addFormCard}>
+          <Text style={styles.addFormTitle}>Nouvelle quête</Text>
+
+          <Text style={styles.formLabel}>Catégorie</Text>
+          <View style={styles.categoryOptions}>
+            {CATEGORY_OPTIONS.map((key) => {
+              const category = CATEGORIES[key];
+              const isSelected = selectedCategory === key;
+              return (
+                <Pressable
+                  key={key}
+                  style={[styles.categoryOption, isSelected && styles.categoryOptionSelected]}
+                  onPress={() => onSelectCategory(key)}
+                  disabled={isSubmitting}
+                >
+                  <Text
+                    style={[
+                      styles.categoryOptionLabel,
+                      isSelected && styles.categoryOptionLabelSelected,
+                    ]}
+                  >
+                    {category.icon} {category.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.formLabel}>Action</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex: Méditer 10 minutes"
+            placeholderTextColor="#64748b"
+            value={newQuestTitle}
+            onChangeText={onChangeTitle}
+            editable={!isSubmitting}
+          />
+
+          <Text style={styles.formLabel}>Fréquence</Text>
+          <View style={styles.frequencyOptions}>
+            {FREQUENCY_CHOICES.map((option) => {
+              const isSelected = selectedFrequency === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  style={[
+                    styles.frequencyOption,
+                    isSelected && styles.frequencyOptionSelected,
+                  ]}
+                  onPress={() => onSelectFrequency(option.value)}
+                  disabled={isSubmitting}
+                >
+                  <Text
+                    style={[
+                      styles.frequencyOptionLabel,
+                      isSelected && styles.frequencyOptionLabelSelected,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                  <Text style={styles.frequencyOptionHelper}>{option.periodLabel}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.formLabel}>Objectif</Text>
+          <Text style={styles.formHelper}>Nombre de fois {occurrencesHelperLabel}</Text>
+          <TextInput
+            style={styles.input}
+            placeholder={selectedFrequency === "weekly" ? "2" : "1"}
+            placeholderTextColor="#64748b"
+            value={occurrenceCount}
+            onChangeText={onChangeOccurrenceCount}
+            keyboardType="number-pad"
+            maxLength={3}
+            editable={!isSubmitting}
+          />
+
+          <View style={styles.addFormActions}>
+            <Pressable
+              style={[styles.secondaryButton, isSubmitting && styles.secondaryButtonDisabled]}
+              onPress={onCancel}
+              disabled={isSubmitting}
+            >
+              <Text style={styles.secondaryButtonLabel}>Annuler</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.confirmButton,
+                pressed && styles.confirmButtonPressed,
+                isSubmitting && styles.confirmButtonDisabled,
+              ]}
+              onPress={onSubmit}
+              disabled={isSubmitting}
+            >
+              <LinearGradient
+                colors={["#7c3aed", "#ec4899"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.confirmGradient}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color="#f8fafc" />
+                ) : (
+                  <Text style={styles.confirmButtonLabel}>Valider</Text>
+                )}
+              </LinearGradient>
+            </Pressable>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
 export default function QuestsScreen() {
   const router = useRouter();
   const navigationState = useRootNavigationState();
@@ -255,67 +415,41 @@ export default function QuestsScreen() {
     () => allQuestItems.filter((item) => !item.is_custom || item.show_in_global),
     [allQuestItems],
   );
-  const domainKeyOverrides = useMemo(() => {
-    const overrides = new Map<CategoryKey, string>();
-
-    const normalizeText = (value: string | null | undefined) =>
-      value
-        ? value
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-          .trim()
-        : "";
-
-    const candidates: { key: string; name: string }[] = [];
-
-    if (dashboard) {
-      for (const stat of dashboard.domain_stats) {
-        candidates.push({ key: stat.domain_key, name: stat.domain_name });
-      }
-    }
-
-    for (const task of allQuestItems) {
-      candidates.push({ key: task.domain_key, name: task.domain_name });
-    }
-
-    if (candidates.length === 0) {
-      return overrides;
-    }
-
-    for (const categoryKey of CATEGORY_OPTIONS) {
-      const category = CATEGORIES[categoryKey];
-      const normalizedKey = normalizeText(categoryKey);
-      const normalizedLabel = normalizeText(category.label);
-
-      const match = candidates.find((candidate) => {
-        if (normalizeText(candidate.key) === normalizedKey) {
-          return true;
-        }
-        if (candidate.name) {
-          return normalizeText(candidate.name) === normalizedLabel;
-        }
-        return false;
-      });
-
-      if (match) {
-        overrides.set(categoryKey, match.key);
-      }
-    }
-
-    return overrides;
-  }, [allQuestItems, dashboard]);
+  const domainKeyOverrides = useMemo(
+    () => buildDomainKeyOverrides(allQuestItems, dashboard ?? null),
+    [allQuestItems, dashboard],
+  );
   const isInitialLoading =
     (status === "loading" || status === "idle") && allQuestItems.length === 0;
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setNewQuestTitle("");
     setSelectedCategory(defaultCategory);
     setSelectedFrequency("daily");
     setOccurrenceCount("1");
-  };
+  }, [defaultCategory]);
 
-  const handleSelectFrequency = (value: TaskFrequency) => {
+  const handleStartAdd = useCallback(() => {
+    resetForm();
+    setShowAddTask(true);
+  }, [resetForm]);
+
+  const handleCancelAdd = useCallback(() => {
+    if (!isSubmitting) {
+      setShowAddTask(false);
+      resetForm();
+    }
+  }, [isSubmitting, resetForm]);
+
+  const handleChangeTitle = useCallback((value: string) => {
+    setNewQuestTitle(value);
+  }, []);
+
+  const handleSelectCategory = useCallback((value: CategoryKey) => {
+    setSelectedCategory(value);
+  }, []);
+
+  const handleSelectFrequency = useCallback((value: TaskFrequency) => {
     setSelectedFrequency(value);
     setOccurrenceCount((previous) => {
       const parsed = Number.parseInt(previous, 10);
@@ -324,9 +458,13 @@ export default function QuestsScreen() {
       }
       return previous;
     });
-  };
+  }, []);
 
-  const handleCreateTaskSubmit = async () => {
+  const handleChangeOccurrenceCount = useCallback((value: string) => {
+    setOccurrenceCount(value.replace(/[^0-9]/g, ""));
+  }, []);
+
+  const handleCreateTaskSubmit = useCallback(async () => {
     const title = newQuestTitle.trim();
     if (!title) {
       Alert.alert("Titre requis", "Veuillez saisir un titre pour votre quête.");
@@ -365,7 +503,16 @@ export default function QuestsScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [
+    createTask,
+    defaultXpReward,
+    domainKeyOverrides,
+    newQuestTitle,
+    occurrenceCount,
+    resetForm,
+    selectedCategory,
+    selectedFrequency,
+  ]);
 
   const handleToggleTask = useCallback(
     async (task: TaskListItem) => {
@@ -448,10 +595,7 @@ export default function QuestsScreen() {
             styles.addTaskButton,
             isSubmitting && styles.addTaskButtonDisabled,
           ]}
-          onPress={() => {
-            resetForm();
-            setShowAddTask(true);
-          }}
+          onPress={handleStartAdd}
           disabled={isSubmitting}
         >
           <LinearGradient
@@ -468,149 +612,95 @@ export default function QuestsScreen() {
     );
   };
 
-  const renderAddSection = () => (
-    <View style={styles.addSection}>
-      {!showAddTask ? (
-        <Pressable
-          style={({ pressed }) => [
-            styles.addTaskButton,
-            pressed && styles.addTaskButtonPressed,
-          ]}
-          onPress={() => {
-            resetForm();
-            setShowAddTask(true);
-          }}
-          disabled={isSubmitting}
-        >
-          <LinearGradient
-            colors={["#7c3aed", "#ec4899"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.addTaskGradient}
+  const renderHeader = useCallback(
+    () => (
+      <View style={styles.headerContainer}>
+        <View style={styles.headerTopRow}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push("/")}
+            style={styles.backButton}
           >
-            <Feather name="plus" size={20} color="#f8fafc" />
-            <Text style={styles.addTaskButtonLabel}>Ajouter une quête</Text>
-          </LinearGradient>
-        </Pressable>
-      ) : (
-        <View style={styles.addFormCard}>
-          <Text style={styles.addFormTitle}>Nouvelle quête</Text>
-
-          <Text style={styles.formLabel}>Catégorie</Text>
-          <View style={styles.categoryOptions}>
-            {CATEGORY_OPTIONS.map((key) => {
-              const category = CATEGORIES[key];
-              const isSelected = selectedCategory === key;
-              return (
-                <Pressable
-                  key={key}
-                  style={[styles.categoryOption, isSelected && styles.categoryOptionSelected]}
-                  onPress={() => setSelectedCategory(key)}
-                  disabled={isSubmitting}
-                >
-                  <Text
-                    style={[
-                      styles.categoryOptionLabel,
-                      isSelected && styles.categoryOptionLabelSelected,
-                    ]}
-                  >
-                    {category.icon} {category.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Text style={styles.formLabel}>Action</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ex: Méditer 10 minutes"
-            placeholderTextColor="#64748b"
-            value={newQuestTitle}
-            onChangeText={setNewQuestTitle}
-            editable={!isSubmitting}
-          />
-
-          <Text style={styles.formLabel}>Fréquence</Text>
-          <View style={styles.frequencyOptions}>
-            {FREQUENCY_CHOICES.map((option) => {
-              const isSelected = selectedFrequency === option.value;
-              return (
-                <Pressable
-                  key={option.value}
-                  style={[
-                    styles.frequencyOption,
-                    isSelected && styles.frequencyOptionSelected,
-                  ]}
-                  onPress={() => handleSelectFrequency(option.value)}
-                  disabled={isSubmitting}
-                >
-                  <Text
-                    style={[
-                      styles.frequencyOptionLabel,
-                      isSelected && styles.frequencyOptionLabelSelected,
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                  <Text style={styles.frequencyOptionHelper}>{option.periodLabel}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Text style={styles.formLabel}>Objectif</Text>
-          <Text style={styles.formHelper}>Nombre de fois {occurrencesHelperLabel}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder={selectedFrequency === "weekly" ? "2" : "1"}
-            placeholderTextColor="#64748b"
-            value={occurrenceCount}
-            onChangeText={(value) => setOccurrenceCount(value.replace(/[^0-9]/g, ""))}
-            keyboardType="number-pad"
-            maxLength={3}
-            editable={!isSubmitting}
-          />
-
-          <View style={styles.addFormActions}>
+            <Feather name="chevron-left" size={24} color="#f8fafc" />
+          </Pressable>
+          <Text style={styles.title}>Mes Quêtes</Text>
+          <View style={styles.headerActions}>
             <Pressable
-              style={[styles.secondaryButton, isSubmitting && styles.secondaryButtonDisabled]}
-              onPress={() => {
-                if (!isSubmitting) {
-                  setShowAddTask(false);
-                  resetForm();
-                }
-              }}
-              disabled={isSubmitting}
-            >
-              <Text style={styles.secondaryButtonLabel}>Annuler</Text>
-            </Pressable>
-            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/quests/catalogue")}
               style={({ pressed }) => [
-                styles.confirmButton,
-                pressed && styles.confirmButtonPressed,
-                isSubmitting && styles.confirmButtonDisabled,
+                styles.catalogueButton,
+                pressed && styles.catalogueButtonPressed,
               ]}
-              onPress={handleCreateTaskSubmit}
-              disabled={isSubmitting}
             >
-              <LinearGradient
-                colors={["#7c3aed", "#ec4899"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.confirmGradient}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator size="small" color="#f8fafc" />
-                ) : (
-                  <Text style={styles.confirmButtonLabel}>Valider</Text>
-                )}
-              </LinearGradient>
+              <Feather name="book-open" size={16} color="#f8fafc" />
+              <Text style={styles.catalogueButtonLabel}>Catalogue</Text>
             </Pressable>
           </View>
         </View>
-      )}
-    </View>
+        <View style={styles.personalSection}>
+          <View style={styles.personalHeaderRow}>
+            <Text style={styles.personalTitle}>Quêtes personnalisées</Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.personalManageButton,
+                pressed && styles.personalManageButtonPressed,
+              ]}
+              onPress={() => router.push("/quests/personalisation")}
+              accessibilityRole="button"
+            >
+              <Text style={styles.personalManageLabel}>Gérer</Text>
+              <Feather name="arrow-right" size={16} color="#cbd5f5" />
+            </Pressable>
+          </View>
+          <Text style={styles.personalEmptyLabel}>
+            {personalQuestItems.length === 0
+              ? "Ajoutez une quête personnalisée pour la retrouver ici."
+              : hiddenPersonalQuestItems.length > 0
+                ? `${personalQuestItems.length} quête(s) personnalisée(s) dont ${hiddenPersonalQuestItems.length} masquée(s) du global.`
+                : "Toutes vos quêtes personnalisées apparaissent dans la liste principale."}
+          </Text>
+        </View>
+      </View>
+    ),
+    [hiddenPersonalQuestItems.length, personalQuestItems.length, router],
+  );
+
+  const renderAddSection = useCallback(
+    () => (
+      <AddQuestSection
+        showAddTask={showAddTask}
+        isSubmitting={isSubmitting}
+        onStartAdd={handleStartAdd}
+        onCancel={handleCancelAdd}
+        onSubmit={handleCreateTaskSubmit}
+        onChangeTitle={handleChangeTitle}
+        newQuestTitle={newQuestTitle}
+        onSelectCategory={handleSelectCategory}
+        selectedCategory={selectedCategory}
+        occurrencesHelperLabel={occurrencesHelperLabel}
+        selectedFrequency={selectedFrequency}
+        onSelectFrequency={handleSelectFrequency}
+        occurrenceCount={occurrenceCount}
+        onChangeOccurrenceCount={handleChangeOccurrenceCount}
+      />
+    ),
+    [
+      handleCancelAdd,
+      handleChangeOccurrenceCount,
+      handleChangeTitle,
+      handleCreateTaskSubmit,
+      handleSelectCategory,
+      handleSelectFrequency,
+      handleStartAdd,
+      isSubmitting,
+      newQuestTitle,
+      occurrenceCount,
+      occurrencesHelperLabel,
+      selectedCategory,
+      selectedFrequency,
+      showAddTask,
+    ],
   );
 
   return (
@@ -622,69 +712,31 @@ export default function QuestsScreen() {
     >
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.screen}>
-          <FlatList<TaskListItem>
-            data={displayedQuestItems}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            ListEmptyComponent={ListEmptyComponent}
-            ListFooterComponent={renderAddSection}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl refreshing={isRefreshing} onRefresh={() => refresh()} tintColor="#818cf8" />
-            }
-            ListHeaderComponent={
-              <View style={styles.headerContainer}>
-                <View style={styles.headerTopRow}>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => router.push("/")}
-                    style={styles.backButton}
-                  >
-                    <Feather name="chevron-left" size={24} color="#f8fafc" />
-                  </Pressable>
-                  <Text style={styles.title}>Mes Quêtes</Text>
-                  <View style={styles.headerActions}>
-
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => router.push("/quests/catalogue")}
-                      style={({ pressed }) => [
-                        styles.catalogueButton,
-                        pressed && styles.catalogueButtonPressed,
-                      ]}
-                    >
-                      <Feather name="book-open" size={16} color="#f8fafc" />
-                      <Text style={styles.catalogueButtonLabel}>Catalogue</Text>
-                    </Pressable>
-                  </View>
-                </View>
-                <View style={styles.personalSection}>
-                  <View style={styles.personalHeaderRow}>
-                    <Text style={styles.personalTitle}>Quêtes personnalisées</Text>
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.personalManageButton,
-                        pressed && styles.personalManageButtonPressed,
-                      ]}
-                      onPress={() => router.push("/quests/personalisation")}
-                      accessibilityRole="button"
-                    >
-                      <Text style={styles.personalManageLabel}>Gérer</Text>
-                      <Feather name="arrow-right" size={16} color="#cbd5f5" />
-                    </Pressable>
-                  </View>
-                  <Text style={styles.personalEmptyLabel}>
-                    {personalQuestItems.length === 0
-                      ? "Ajoutez une quête personnalisée pour la retrouver ici."
-                      : hiddenPersonalQuestItems.length > 0
-                        ? `${personalQuestItems.length} quête(s) personnalisée(s) dont ${hiddenPersonalQuestItems.length} masquée(s) du global.`
-                        : "Toutes vos quêtes personnalisées apparaissent dans la liste principale."}
-                  </Text>
-                </View>
-              </View>
-            }
-          />
+          {showAddTask ? (
+            <ScrollView
+              contentContainerStyle={styles.addOnlyContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {renderHeader()}
+              {renderAddSection()}
+            </ScrollView>
+          ) : (
+            <FlatList<TaskListItem>
+              data={displayedQuestItems}
+              keyExtractor={(item) => item.id}
+              renderItem={renderItem}
+              ListEmptyComponent={ListEmptyComponent}
+              ListFooterComponent={renderAddSection}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              refreshControl={
+                <RefreshControl refreshing={isRefreshing} onRefresh={() => refresh()} tintColor="#818cf8" />
+              }
+              ListHeaderComponent={renderHeader}
+            />
+          )}
           <RewardUnlockModal
             visible={isRewardModalVisible && currentReward !== null}
             icon={rewardIcon}
@@ -710,6 +762,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 160,
+    gap: 16,
+    flexGrow: 1,
+  },
+  addOnlyContent: {
     paddingHorizontal: 24,
     paddingTop: 32,
     paddingBottom: 160,

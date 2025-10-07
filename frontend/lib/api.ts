@@ -14,6 +14,7 @@ import type {
   UserProfile,
   UserSummary,
   TaskLogResponse,
+  UpdateTaskRequest,
 } from "../types/api";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
@@ -173,6 +174,19 @@ export async function createTask(
   return handleResponse<TaskListItem>(response);
 }
 
+export async function updateTask(
+  userId: string,
+  taskId: string,
+  payload: UpdateTaskRequest,
+): Promise<TaskListItem> {
+  const response = await fetch(`${API_URL}/users/${userId}/tasks/${taskId}`, {
+    method: "PATCH",
+    headers: buildJsonHeaders(true),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<TaskListItem>(response);
+}
+
 export async function updateTaskVisibility(
   userId: string,
   taskId: string,
@@ -184,6 +198,17 @@ export async function updateTaskVisibility(
     body: JSON.stringify(payload),
   });
   return handleResponse<TaskListItem>(response);
+}
+
+export async function deleteTask(userId: string, taskId: string): Promise<void> {
+  const response = await fetch(`${API_URL}/users/${userId}/tasks/${taskId}`, {
+    method: "DELETE",
+    headers: buildJsonHeaders(),
+  });
+
+  if (!response.ok && response.status !== 204) {
+    throw new Error(await extractErrorMessage(response));
+  }
 }
 
 export async function fetchProgression(

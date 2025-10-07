@@ -39,6 +39,7 @@ from ..schemas import (
     TaskFrequency,
     TaskListItem,
     TaskListResponse,
+    TaskUpdateRequest,
     TaskTemplateItem,
     TaskVisibilityUpdateRequest,
     UserDomainSettingItem,
@@ -716,6 +717,105 @@ def create_task(
 
 
 @router.patch(
+    "/{user_id}/tasks/{task_id}",
+    response_model=TaskListItem,
+)
+def update_task(
+    user_id: UUID,
+    task_id: UUID,
+    payload: TaskUpdateRequest,
+    session: Session = Depends(get_db_session),
+) -> TaskListItem:
+    user = resolve_user(session, user_id)
+    settings = ensure_user_settings(session, user)
+    user_timezone = get_user_timezone(user)
+
+    user_task = session.scalar(
+        select(UserTask).where(
+            UserTask.id == task_id,
+            UserTask.user_id == user.id,
+            UserTask.is_active.is_(True),
+        )
+    )
+
+    if not user_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Quête introuvable pour cet utilisateur.",
+        )
+
+    if user_task.template_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Seules les quêtes personnalisées peuvent être modifiées.",
+        )
+
+    title = payload.title.strip()
+    if not title:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le titre de la quête est obligatoire.",
+        )
+
+    domain = session.scalar(select(Domain).where(Domain.key == payload.domain_key))
+    if not domain:
+        requested_key = normalize_text(payload.domain_key)
+        for candidate in session.scalars(select(Domain)):
+            if normalize_text(candidate.key) == requested_key:
+                domain = candidate
+                break
+            if candidate.name and normalize_text(candidate.name) == requested_key:
+                domain = candidate
+                break
+
+    if not domain:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Domaine inconnu pour cette quête.",
+        )
+
+    schedule_period, schedule_interval = resolve_task_schedule_from_payload(payload)
+    frequency = map_period_to_frequency(schedule_period)
+    now = datetime.now(user_timezone)
+    period_start, period_end = compute_period_window(
+        schedule_period,
+        now=now,
+        first_day_of_week=settings.first_day_of_week,
+        interval=schedule_interval,
+    )
+
+    user_task.custom_title = title
+    user_task.custom_xp = payload.xp
+    user_task.custom_points = payload.xp
+    user_task.domain_id = domain.id
+    user_task.schedule_period = schedule_period
+    user_task.schedule_interval = schedule_interval
+    user_task.frequency_type = frequency.value
+    user_task.target_occurrences = payload.target_occurrences
+
+    session.add(user_task)
+    session.commit()
+    session.refresh(user_task)
+
+    occurrences_completed = count_task_occurrences(
+        session,
+        user_id=user.id,
+        user_task_id=user_task.id,
+        period_start=period_start,
+        period_end=period_end,
+    )
+
+    return build_task_list_item(
+        user_task,
+        domain,
+        None,
+        occurrences_completed=occurrences_completed,
+        period_start=period_start,
+        period_end=period_end,
+    )
+
+
+@router.patch(
     "/{user_id}/tasks/{task_id}/visibility",
     response_model=TaskListItem,
 )
@@ -793,6 +893,42 @@ def update_task_visibility(
         period_start=period_start,
         period_end=period_end,
     )
+
+
+@router.delete(
+    "/{user_id}/tasks/{task_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_task(
+    user_id: UUID,
+    task_id: UUID,
+    session: Session = Depends(get_db_session),
+) -> Response:
+    user = resolve_user(session, user_id)
+
+    user_task = session.scalar(
+        select(UserTask).where(
+            UserTask.id == task_id,
+            UserTask.user_id == user.id,
+            UserTask.is_active.is_(True),
+        )
+    )
+
+    if not user_task:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    if user_task.template_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Seules les quêtes personnalisées peuvent être supprimées.",
+        )
+
+    user_task.is_active = False
+    user_task.is_favorite = False
+    session.add(user_task)
+    session.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{user_id}/task-templates", response_model=list[TaskTemplateItem])

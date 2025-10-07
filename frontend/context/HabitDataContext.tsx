@@ -3,6 +3,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import {
   completeTaskLog,
   createTask as createTaskApi,
+  updateTask as updateTaskApi,
+  deleteTask as deleteTaskApi,
   enableUserTaskTemplate,
   disableUserTaskTemplate,
   fetchDashboard,
@@ -16,6 +18,7 @@ import type {
   ProgressionResponse,
   RewardUnlock,
   TaskListResponse,
+  UpdateTaskRequest,
   UserSummary,
 } from "../types/api";
 import { useAuth } from "./AuthContext";
@@ -34,6 +37,8 @@ type HabitDataContextValue = {
   refresh: () => Promise<void>;
   completeTask: (taskId: string) => Promise<RewardUnlock[]>;
   createTask: (payload: CreateTaskRequest) => Promise<void>;
+  updateTask: (taskId: string, payload: UpdateTaskRequest) => Promise<void>;
+  deleteTask: (taskId: string) => Promise<void>;
   enableTaskTemplate: (templateId: number) => Promise<void>;
   disableTaskTemplate: (templateId: number) => Promise<void>;
   updateTaskVisibility: (taskId: string, showInGlobal: boolean) => Promise<void>;
@@ -149,6 +154,28 @@ export function HabitDataProvider({ children }: { children: React.ReactNode }) {
     [refresh, state.user],
   );
 
+  const updateTask = useCallback(
+    async (taskId: string, payload: UpdateTaskRequest) => {
+      if (!state.user) {
+        throw new Error("Utilisateur non chargé");
+      }
+      await updateTaskApi(state.user.id, taskId, payload);
+      await refresh();
+    },
+    [refresh, state.user],
+  );
+
+  const deleteTask = useCallback(
+    async (taskId: string) => {
+      if (!state.user) {
+        throw new Error("Utilisateur non chargé");
+      }
+      await deleteTaskApi(state.user.id, taskId);
+      await refresh();
+    },
+    [refresh, state.user],
+  );
+
   const enableTaskTemplate = useCallback(
     async (templateId: number) => {
       if (!state.user) {
@@ -190,6 +217,8 @@ export function HabitDataProvider({ children }: { children: React.ReactNode }) {
       refresh,
       completeTask,
       createTask,
+      updateTask,
+      deleteTask,
       enableTaskTemplate,
       disableTaskTemplate,
       updateTaskVisibility,
@@ -200,6 +229,8 @@ export function HabitDataProvider({ children }: { children: React.ReactNode }) {
       refresh,
       completeTask,
       createTask,
+      updateTask,
+      deleteTask,
       enableTaskTemplate,
       disableTaskTemplate,
       updateTaskVisibility,

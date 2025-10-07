@@ -74,6 +74,16 @@ export type CreateTaskRequest = {
   target_occurrences: number;
 };
 
+export type UpdateTaskRequest = {
+  title: string;
+  domain_key: string;
+  xp: number;
+  frequency_type: TaskFrequency;
+  schedule_period: SnapshotPeriod;
+  schedule_interval: number;
+  target_occurrences: number;
+};
+
 export type UpdateTaskVisibilityRequest = {
   show_in_global: boolean;
 };

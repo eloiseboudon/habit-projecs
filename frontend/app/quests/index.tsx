@@ -22,24 +22,12 @@ import { CATEGORIES, CATEGORY_OPTIONS, type CategoryKey } from "../../constants/
 import { useAuth } from "../../context/AuthContext";
 import { useHabitData } from "../../context/HabitDataContext";
 import type { RewardUnlock, SnapshotPeriod, TaskFrequency, TaskListItem } from "../../types/api";
-
-const FREQUENCY_CHOICES: { value: TaskFrequency; label: string; periodLabel: string }[] = [
-  { value: "daily", label: "Quotidienne", periodLabel: "aujourd’hui" },
-  { value: "weekly", label: "Hebdomadaire", periodLabel: "cette semaine" },
-  { value: "monthly", label: "Mensuelle", periodLabel: "ce mois-ci" },
-];
-
-const SCHEDULE_PERIOD_BY_FREQUENCY: Record<TaskFrequency, SnapshotPeriod> = {
-  daily: "day",
-  weekly: "week",
-  monthly: "month",
-};
-
-const PERIOD_HELPER_BY_SCHEDULE: Record<SnapshotPeriod, string> = {
-  day: "par jour",
-  week: "par semaine",
-  month: "par mois",
-};
+import {
+  FREQUENCY_CHOICES,
+  SCHEDULE_PERIOD_BY_FREQUENCY,
+  PERIOD_HELPER_BY_SCHEDULE,
+  buildDomainKeyOverrides,
+} from "./utils";
 
 const REWARD_TYPE_LABELS: Record<string, string> = {
   badge: "Badge",
@@ -426,56 +414,10 @@ export default function QuestsScreen() {
     () => allQuestItems.filter((item) => !item.is_custom || item.show_in_global),
     [allQuestItems],
   );
-  const domainKeyOverrides = useMemo(() => {
-    const overrides = new Map<CategoryKey, string>();
-
-    const normalizeText = (value: string | null | undefined) =>
-      value
-        ? value
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-          .trim()
-        : "";
-
-    const candidates: { key: string; name: string }[] = [];
-
-    if (dashboard) {
-      for (const stat of dashboard.domain_stats) {
-        candidates.push({ key: stat.domain_key, name: stat.domain_name });
-      }
-    }
-
-    for (const task of allQuestItems) {
-      candidates.push({ key: task.domain_key, name: task.domain_name });
-    }
-
-    if (candidates.length === 0) {
-      return overrides;
-    }
-
-    for (const categoryKey of CATEGORY_OPTIONS) {
-      const category = CATEGORIES[categoryKey];
-      const normalizedKey = normalizeText(categoryKey);
-      const normalizedLabel = normalizeText(category.label);
-
-      const match = candidates.find((candidate) => {
-        if (normalizeText(candidate.key) === normalizedKey) {
-          return true;
-        }
-        if (candidate.name) {
-          return normalizeText(candidate.name) === normalizedLabel;
-        }
-        return false;
-      });
-
-      if (match) {
-        overrides.set(categoryKey, match.key);
-      }
-    }
-
-    return overrides;
-  }, [allQuestItems, dashboard]);
+  const domainKeyOverrides = useMemo(
+    () => buildDomainKeyOverrides(allQuestItems, dashboard ?? null),
+    [allQuestItems, dashboard],
+  );
   const isInitialLoading =
     (status === "loading" || status === "idle") && allQuestItems.length === 0;
 

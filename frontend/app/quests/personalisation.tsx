@@ -302,7 +302,7 @@ export default function PersonalisationScreen() {
           styles.addQuestButton,
           pressed && styles.addQuestButtonPressed,
         ]}
-        onPress={() => router.push("/quests")}
+        onPress={() => router.push("/quests?add=custom")}
         accessibilityRole="button"
         accessibilityLabel="Ajouter une quête personnalisée"
       >

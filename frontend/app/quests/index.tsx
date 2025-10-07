@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRootNavigationState, useRouter } from "expo-router";
+import { useLocalSearchParams, useRootNavigationState, useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -343,6 +343,7 @@ function AddQuestSection({
 export default function QuestsScreen() {
   const router = useRouter();
   const navigationState = useRootNavigationState();
+  const { add } = useLocalSearchParams<{ add?: string | string[] }>();
   const {
     state: authState,
   } = useAuth();
@@ -364,6 +365,12 @@ export default function QuestsScreen() {
   const [pendingRewards, setPendingRewards] = useState<RewardUnlock[]>([]);
   const [currentReward, setCurrentReward] = useState<RewardUnlock | null>(null);
   const [isRewardModalVisible, setIsRewardModalVisible] = useState(false);
+  const normalizedAddParam = useMemo(() => {
+    if (!add) {
+      return null;
+    }
+    return Array.isArray(add) ? add[0] ?? null : add;
+  }, [add]);
   const defaultXpReward = 10;
   const occurrencesHelperLabel = useMemo(() => {
     const period = SCHEDULE_PERIOD_BY_FREQUENCY[selectedFrequency];
@@ -428,6 +435,13 @@ export default function QuestsScreen() {
     setSelectedFrequency("daily");
     setOccurrenceCount("1");
   }, [defaultCategory]);
+
+  useEffect(() => {
+    if (normalizedAddParam === "custom") {
+      resetForm();
+      setShowAddTask(true);
+    }
+  }, [normalizedAddParam, resetForm]);
 
   const handleStartAdd = useCallback(() => {
     resetForm();

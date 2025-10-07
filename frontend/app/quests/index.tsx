@@ -9,6 +9,7 @@ import {
   ListRenderItemInfo,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -611,6 +612,97 @@ export default function QuestsScreen() {
     );
   };
 
+  const renderHeader = useCallback(
+    () => (
+      <View style={styles.headerContainer}>
+        <View style={styles.headerTopRow}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push("/")}
+            style={styles.backButton}
+          >
+            <Feather name="chevron-left" size={24} color="#f8fafc" />
+          </Pressable>
+          <Text style={styles.title}>Mes Quêtes</Text>
+          <View style={styles.headerActions}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/quests/catalogue")}
+              style={({ pressed }) => [
+                styles.catalogueButton,
+                pressed && styles.catalogueButtonPressed,
+              ]}
+            >
+              <Feather name="book-open" size={16} color="#f8fafc" />
+              <Text style={styles.catalogueButtonLabel}>Catalogue</Text>
+            </Pressable>
+          </View>
+        </View>
+        <View style={styles.personalSection}>
+          <View style={styles.personalHeaderRow}>
+            <Text style={styles.personalTitle}>Quêtes personnalisées</Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.personalManageButton,
+                pressed && styles.personalManageButtonPressed,
+              ]}
+              onPress={() => router.push("/quests/personalisation")}
+              accessibilityRole="button"
+            >
+              <Text style={styles.personalManageLabel}>Gérer</Text>
+              <Feather name="arrow-right" size={16} color="#cbd5f5" />
+            </Pressable>
+          </View>
+          <Text style={styles.personalEmptyLabel}>
+            {personalQuestItems.length === 0
+              ? "Ajoutez une quête personnalisée pour la retrouver ici."
+              : hiddenPersonalQuestItems.length > 0
+                ? `${personalQuestItems.length} quête(s) personnalisée(s) dont ${hiddenPersonalQuestItems.length} masquée(s) du global.`
+                : "Toutes vos quêtes personnalisées apparaissent dans la liste principale."}
+          </Text>
+        </View>
+      </View>
+    ),
+    [hiddenPersonalQuestItems.length, personalQuestItems.length, router],
+  );
+
+  const renderAddSection = useCallback(
+    () => (
+      <AddQuestSection
+        showAddTask={showAddTask}
+        isSubmitting={isSubmitting}
+        onStartAdd={handleStartAdd}
+        onCancel={handleCancelAdd}
+        onSubmit={handleCreateTaskSubmit}
+        onChangeTitle={handleChangeTitle}
+        newQuestTitle={newQuestTitle}
+        onSelectCategory={handleSelectCategory}
+        selectedCategory={selectedCategory}
+        occurrencesHelperLabel={occurrencesHelperLabel}
+        selectedFrequency={selectedFrequency}
+        onSelectFrequency={handleSelectFrequency}
+        occurrenceCount={occurrenceCount}
+        onChangeOccurrenceCount={handleChangeOccurrenceCount}
+      />
+    ),
+    [
+      handleCancelAdd,
+      handleChangeOccurrenceCount,
+      handleChangeTitle,
+      handleCreateTaskSubmit,
+      handleSelectCategory,
+      handleSelectFrequency,
+      handleStartAdd,
+      isSubmitting,
+      newQuestTitle,
+      occurrenceCount,
+      occurrencesHelperLabel,
+      selectedCategory,
+      selectedFrequency,
+      showAddTask,
+    ],
+  );
+
   return (
     <LinearGradient
       colors={["#111827", "#111827", "#1f2937"]}
@@ -620,87 +712,31 @@ export default function QuestsScreen() {
     >
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.screen}>
-          <FlatList<TaskListItem>
-            data={displayedQuestItems}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            ListEmptyComponent={ListEmptyComponent}
-            ListFooterComponent={
-              <AddQuestSection
-                showAddTask={showAddTask}
-                isSubmitting={isSubmitting}
-                onStartAdd={handleStartAdd}
-                onCancel={handleCancelAdd}
-                onSubmit={handleCreateTaskSubmit}
-                onChangeTitle={handleChangeTitle}
-                newQuestTitle={newQuestTitle}
-                onSelectCategory={handleSelectCategory}
-                selectedCategory={selectedCategory}
-                occurrencesHelperLabel={occurrencesHelperLabel}
-                selectedFrequency={selectedFrequency}
-                onSelectFrequency={handleSelectFrequency}
-                occurrenceCount={occurrenceCount}
-                onChangeOccurrenceCount={handleChangeOccurrenceCount}
-              />
-            }
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            refreshControl={
-              <RefreshControl refreshing={isRefreshing} onRefresh={() => refresh()} tintColor="#818cf8" />
-            }
-            ListHeaderComponent={
-              <View style={styles.headerContainer}>
-                <View style={styles.headerTopRow}>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => router.push("/")}
-                    style={styles.backButton}
-                  >
-                    <Feather name="chevron-left" size={24} color="#f8fafc" />
-                  </Pressable>
-                  <Text style={styles.title}>Mes Quêtes</Text>
-                  <View style={styles.headerActions}>
-
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => router.push("/quests/catalogue")}
-                      style={({ pressed }) => [
-                        styles.catalogueButton,
-                        pressed && styles.catalogueButtonPressed,
-                      ]}
-                    >
-                      <Feather name="book-open" size={16} color="#f8fafc" />
-                      <Text style={styles.catalogueButtonLabel}>Catalogue</Text>
-                    </Pressable>
-                  </View>
-                </View>
-                <View style={styles.personalSection}>
-                  <View style={styles.personalHeaderRow}>
-                    <Text style={styles.personalTitle}>Quêtes personnalisées</Text>
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.personalManageButton,
-                        pressed && styles.personalManageButtonPressed,
-                      ]}
-                      onPress={() => router.push("/quests/personalisation")}
-                      accessibilityRole="button"
-                    >
-                      <Text style={styles.personalManageLabel}>Gérer</Text>
-                      <Feather name="arrow-right" size={16} color="#cbd5f5" />
-                    </Pressable>
-                  </View>
-                  <Text style={styles.personalEmptyLabel}>
-                    {personalQuestItems.length === 0
-                      ? "Ajoutez une quête personnalisée pour la retrouver ici."
-                      : hiddenPersonalQuestItems.length > 0
-                        ? `${personalQuestItems.length} quête(s) personnalisée(s) dont ${hiddenPersonalQuestItems.length} masquée(s) du global.`
-                        : "Toutes vos quêtes personnalisées apparaissent dans la liste principale."}
-                  </Text>
-                </View>
-              </View>
-            }
-          />
+          {showAddTask ? (
+            <ScrollView
+              contentContainerStyle={styles.addOnlyContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {renderHeader()}
+              {renderAddSection()}
+            </ScrollView>
+          ) : (
+            <FlatList<TaskListItem>
+              data={displayedQuestItems}
+              keyExtractor={(item) => item.id}
+              renderItem={renderItem}
+              ListEmptyComponent={ListEmptyComponent}
+              ListFooterComponent={renderAddSection}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              refreshControl={
+                <RefreshControl refreshing={isRefreshing} onRefresh={() => refresh()} tintColor="#818cf8" />
+              }
+              ListHeaderComponent={renderHeader}
+            />
+          )}
           <RewardUnlockModal
             visible={isRewardModalVisible && currentReward !== null}
             icon={rewardIcon}
@@ -726,6 +762,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 160,
+    gap: 16,
+    flexGrow: 1,
+  },
+  addOnlyContent: {
     paddingHorizontal: 24,
     paddingTop: 32,
     paddingBottom: 160,

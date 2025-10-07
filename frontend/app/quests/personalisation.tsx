@@ -30,7 +30,7 @@ import {
   PERIOD_HELPER_BY_SCHEDULE,
   SCHEDULE_PERIOD_BY_FREQUENCY,
   buildDomainKeyOverrides,
-} from "./utils";
+} from "../../utils/quests";
 
 export default function PersonalisationScreen() {
   const router = useRouter();

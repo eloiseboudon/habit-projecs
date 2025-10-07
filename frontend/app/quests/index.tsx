@@ -27,7 +27,7 @@ import {
   SCHEDULE_PERIOD_BY_FREQUENCY,
   PERIOD_HELPER_BY_SCHEDULE,
   buildDomainKeyOverrides,
-} from "./utils";
+} from "../../utils/quests";
 
 const REWARD_TYPE_LABELS: Record<string, string> = {
   badge: "Badge",

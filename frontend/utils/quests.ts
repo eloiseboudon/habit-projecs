@@ -1,5 +1,5 @@
-import type { SnapshotPeriod, TaskFrequency, TaskListItem, DashboardResponse } from "../../types/api";
-import { CATEGORY_OPTIONS, CATEGORIES, type CategoryKey } from "../../constants/categories";
+import type { SnapshotPeriod, TaskFrequency, TaskListItem, DashboardResponse } from "../types/api";
+import { CATEGORY_OPTIONS, CATEGORIES, type CategoryKey } from "../constants/categories";
 
 export const FREQUENCY_CHOICES: { value: TaskFrequency; label: string; periodLabel: string }[] = [
   { value: "daily", label: "Quotidienne", periodLabel: "aujourd’hui" },

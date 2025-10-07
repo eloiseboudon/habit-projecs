@@ -115,13 +115,13 @@ export default function PersonalisationScreen() {
     return (
       <View style={styles.emptyState}>
         <Text style={styles.emptyStateLabel}>
-          Vous n’avez pas encore créé de quête personnalisée.
+          Il n’y a pas de quêtes personnalisées.
         </Text>
         <Pressable
           style={styles.retryButton}
           onPress={() => router.replace("/quests")}
         >
-          <Text style={styles.retryButtonLabel}>Créer une quête</Text>
+          <Text style={styles.retryButtonLabel}>Ajouter une quête</Text>
         </Pressable>
       </View>
     );

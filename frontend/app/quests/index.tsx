@@ -180,6 +180,177 @@ const QuestListItem = memo(({ item, onToggle, isLoading }: QuestListItemProps) =
 
 QuestListItem.displayName = "QuestListItem";
 
+type AddQuestSectionProps = {
+  showAddTask: boolean;
+  isSubmitting: boolean;
+  onStartAdd: () => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+  onChangeTitle: (value: string) => void;
+  newQuestTitle: string;
+  onSelectCategory: (value: CategoryKey) => void;
+  selectedCategory: CategoryKey;
+  occurrencesHelperLabel: string;
+  selectedFrequency: TaskFrequency;
+  onSelectFrequency: (value: TaskFrequency) => void;
+  occurrenceCount: string;
+  onChangeOccurrenceCount: (value: string) => void;
+};
+
+function AddQuestSection({
+  showAddTask,
+  isSubmitting,
+  onStartAdd,
+  onCancel,
+  onSubmit,
+  onChangeTitle,
+  newQuestTitle,
+  onSelectCategory,
+  selectedCategory,
+  occurrencesHelperLabel,
+  selectedFrequency,
+  onSelectFrequency,
+  occurrenceCount,
+  onChangeOccurrenceCount,
+}: AddQuestSectionProps) {
+  return (
+    <View style={styles.addSection}>
+      {!showAddTask ? (
+        <Pressable
+          style={({ pressed }) => [
+            styles.addTaskButton,
+            pressed && styles.addTaskButtonPressed,
+          ]}
+          onPress={onStartAdd}
+          disabled={isSubmitting}
+        >
+          <LinearGradient
+            colors={["#7c3aed", "#ec4899"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.addTaskGradient}
+          >
+            <Feather name="plus" size={20} color="#f8fafc" />
+            <Text style={styles.addTaskButtonLabel}>Ajouter une quête</Text>
+          </LinearGradient>
+        </Pressable>
+      ) : (
+        <View style={styles.addFormCard}>
+          <Text style={styles.addFormTitle}>Nouvelle quête</Text>
+
+          <Text style={styles.formLabel}>Catégorie</Text>
+          <View style={styles.categoryOptions}>
+            {CATEGORY_OPTIONS.map((key) => {
+              const category = CATEGORIES[key];
+              const isSelected = selectedCategory === key;
+              return (
+                <Pressable
+                  key={key}
+                  style={[styles.categoryOption, isSelected && styles.categoryOptionSelected]}
+                  onPress={() => onSelectCategory(key)}
+                  disabled={isSubmitting}
+                >
+                  <Text
+                    style={[
+                      styles.categoryOptionLabel,
+                      isSelected && styles.categoryOptionLabelSelected,
+                    ]}
+                  >
+                    {category.icon} {category.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.formLabel}>Action</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex: Méditer 10 minutes"
+            placeholderTextColor="#64748b"
+            value={newQuestTitle}
+            onChangeText={onChangeTitle}
+            editable={!isSubmitting}
+          />
+
+          <Text style={styles.formLabel}>Fréquence</Text>
+          <View style={styles.frequencyOptions}>
+            {FREQUENCY_CHOICES.map((option) => {
+              const isSelected = selectedFrequency === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  style={[
+                    styles.frequencyOption,
+                    isSelected && styles.frequencyOptionSelected,
+                  ]}
+                  onPress={() => onSelectFrequency(option.value)}
+                  disabled={isSubmitting}
+                >
+                  <Text
+                    style={[
+                      styles.frequencyOptionLabel,
+                      isSelected && styles.frequencyOptionLabelSelected,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                  <Text style={styles.frequencyOptionHelper}>{option.periodLabel}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.formLabel}>Objectif</Text>
+          <Text style={styles.formHelper}>Nombre de fois {occurrencesHelperLabel}</Text>
+          <TextInput
+            style={styles.input}
+            placeholder={selectedFrequency === "weekly" ? "2" : "1"}
+            placeholderTextColor="#64748b"
+            value={occurrenceCount}
+            onChangeText={onChangeOccurrenceCount}
+            keyboardType="number-pad"
+            maxLength={3}
+            editable={!isSubmitting}
+          />
+
+          <View style={styles.addFormActions}>
+            <Pressable
+              style={[styles.secondaryButton, isSubmitting && styles.secondaryButtonDisabled]}
+              onPress={onCancel}
+              disabled={isSubmitting}
+            >
+              <Text style={styles.secondaryButtonLabel}>Annuler</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.confirmButton,
+                pressed && styles.confirmButtonPressed,
+                isSubmitting && styles.confirmButtonDisabled,
+              ]}
+              onPress={onSubmit}
+              disabled={isSubmitting}
+            >
+              <LinearGradient
+                colors={["#7c3aed", "#ec4899"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.confirmGradient}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color="#f8fafc" />
+                ) : (
+                  <Text style={styles.confirmButtonLabel}>Valider</Text>
+                )}
+              </LinearGradient>
+            </Pressable>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
 export default function QuestsScreen() {
   const router = useRouter();
   const navigationState = useRootNavigationState();
@@ -308,14 +479,34 @@ export default function QuestsScreen() {
   const isInitialLoading =
     (status === "loading" || status === "idle") && allQuestItems.length === 0;
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setNewQuestTitle("");
     setSelectedCategory(defaultCategory);
     setSelectedFrequency("daily");
     setOccurrenceCount("1");
-  };
+  }, [defaultCategory]);
 
-  const handleSelectFrequency = (value: TaskFrequency) => {
+  const handleStartAdd = useCallback(() => {
+    resetForm();
+    setShowAddTask(true);
+  }, [resetForm]);
+
+  const handleCancelAdd = useCallback(() => {
+    if (!isSubmitting) {
+      setShowAddTask(false);
+      resetForm();
+    }
+  }, [isSubmitting, resetForm]);
+
+  const handleChangeTitle = useCallback((value: string) => {
+    setNewQuestTitle(value);
+  }, []);
+
+  const handleSelectCategory = useCallback((value: CategoryKey) => {
+    setSelectedCategory(value);
+  }, []);
+
+  const handleSelectFrequency = useCallback((value: TaskFrequency) => {
     setSelectedFrequency(value);
     setOccurrenceCount((previous) => {
       const parsed = Number.parseInt(previous, 10);
@@ -324,9 +515,13 @@ export default function QuestsScreen() {
       }
       return previous;
     });
-  };
+  }, []);
 
-  const handleCreateTaskSubmit = async () => {
+  const handleChangeOccurrenceCount = useCallback((value: string) => {
+    setOccurrenceCount(value.replace(/[^0-9]/g, ""));
+  }, []);
+
+  const handleCreateTaskSubmit = useCallback(async () => {
     const title = newQuestTitle.trim();
     if (!title) {
       Alert.alert("Titre requis", "Veuillez saisir un titre pour votre quête.");
@@ -365,7 +560,16 @@ export default function QuestsScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [
+    createTask,
+    defaultXpReward,
+    domainKeyOverrides,
+    newQuestTitle,
+    occurrenceCount,
+    resetForm,
+    selectedCategory,
+    selectedFrequency,
+  ]);
 
   const handleToggleTask = useCallback(
     async (task: TaskListItem) => {
@@ -448,10 +652,7 @@ export default function QuestsScreen() {
             styles.addTaskButton,
             isSubmitting && styles.addTaskButtonDisabled,
           ]}
-          onPress={() => {
-            resetForm();
-            setShowAddTask(true);
-          }}
+          onPress={handleStartAdd}
           disabled={isSubmitting}
         >
           <LinearGradient
@@ -468,151 +669,6 @@ export default function QuestsScreen() {
     );
   };
 
-  const renderAddSection = () => (
-    <View style={styles.addSection}>
-      {!showAddTask ? (
-        <Pressable
-          style={({ pressed }) => [
-            styles.addTaskButton,
-            pressed && styles.addTaskButtonPressed,
-          ]}
-          onPress={() => {
-            resetForm();
-            setShowAddTask(true);
-          }}
-          disabled={isSubmitting}
-        >
-          <LinearGradient
-            colors={["#7c3aed", "#ec4899"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.addTaskGradient}
-          >
-            <Feather name="plus" size={20} color="#f8fafc" />
-            <Text style={styles.addTaskButtonLabel}>Ajouter une quête</Text>
-          </LinearGradient>
-        </Pressable>
-      ) : (
-        <View style={styles.addFormCard}>
-          <Text style={styles.addFormTitle}>Nouvelle quête</Text>
-
-          <Text style={styles.formLabel}>Catégorie</Text>
-          <View style={styles.categoryOptions}>
-            {CATEGORY_OPTIONS.map((key) => {
-              const category = CATEGORIES[key];
-              const isSelected = selectedCategory === key;
-              return (
-                <Pressable
-                  key={key}
-                  style={[styles.categoryOption, isSelected && styles.categoryOptionSelected]}
-                  onPress={() => setSelectedCategory(key)}
-                  disabled={isSubmitting}
-                >
-                  <Text
-                    style={[
-                      styles.categoryOptionLabel,
-                      isSelected && styles.categoryOptionLabelSelected,
-                    ]}
-                  >
-                    {category.icon} {category.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Text style={styles.formLabel}>Action</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ex: Méditer 10 minutes"
-            placeholderTextColor="#64748b"
-            value={newQuestTitle}
-            onChangeText={setNewQuestTitle}
-            editable={!isSubmitting}
-          />
-
-          <Text style={styles.formLabel}>Fréquence</Text>
-          <View style={styles.frequencyOptions}>
-            {FREQUENCY_CHOICES.map((option) => {
-              const isSelected = selectedFrequency === option.value;
-              return (
-                <Pressable
-                  key={option.value}
-                  style={[
-                    styles.frequencyOption,
-                    isSelected && styles.frequencyOptionSelected,
-                  ]}
-                  onPress={() => handleSelectFrequency(option.value)}
-                  disabled={isSubmitting}
-                >
-                  <Text
-                    style={[
-                      styles.frequencyOptionLabel,
-                      isSelected && styles.frequencyOptionLabelSelected,
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                  <Text style={styles.frequencyOptionHelper}>{option.periodLabel}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Text style={styles.formLabel}>Objectif</Text>
-          <Text style={styles.formHelper}>Nombre de fois {occurrencesHelperLabel}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder={selectedFrequency === "weekly" ? "2" : "1"}
-            placeholderTextColor="#64748b"
-            value={occurrenceCount}
-            onChangeText={(value) => setOccurrenceCount(value.replace(/[^0-9]/g, ""))}
-            keyboardType="number-pad"
-            maxLength={3}
-            editable={!isSubmitting}
-          />
-
-          <View style={styles.addFormActions}>
-            <Pressable
-              style={[styles.secondaryButton, isSubmitting && styles.secondaryButtonDisabled]}
-              onPress={() => {
-                if (!isSubmitting) {
-                  setShowAddTask(false);
-                  resetForm();
-                }
-              }}
-              disabled={isSubmitting}
-            >
-              <Text style={styles.secondaryButtonLabel}>Annuler</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [
-                styles.confirmButton,
-                pressed && styles.confirmButtonPressed,
-                isSubmitting && styles.confirmButtonDisabled,
-              ]}
-              onPress={handleCreateTaskSubmit}
-              disabled={isSubmitting}
-            >
-              <LinearGradient
-                colors={["#7c3aed", "#ec4899"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.confirmGradient}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator size="small" color="#f8fafc" />
-                ) : (
-                  <Text style={styles.confirmButtonLabel}>Valider</Text>
-                )}
-              </LinearGradient>
-            </Pressable>
-          </View>
-        </View>
-      )}
-    </View>
-  );
-
   return (
     <LinearGradient
       colors={["#111827", "#111827", "#1f2937"]}
@@ -627,9 +683,27 @@ export default function QuestsScreen() {
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
             ListEmptyComponent={ListEmptyComponent}
-            ListFooterComponent={renderAddSection}
+            ListFooterComponent={
+              <AddQuestSection
+                showAddTask={showAddTask}
+                isSubmitting={isSubmitting}
+                onStartAdd={handleStartAdd}
+                onCancel={handleCancelAdd}
+                onSubmit={handleCreateTaskSubmit}
+                onChangeTitle={handleChangeTitle}
+                newQuestTitle={newQuestTitle}
+                onSelectCategory={handleSelectCategory}
+                selectedCategory={selectedCategory}
+                occurrencesHelperLabel={occurrencesHelperLabel}
+                selectedFrequency={selectedFrequency}
+                onSelectFrequency={handleSelectFrequency}
+                occurrenceCount={occurrenceCount}
+                onChangeOccurrenceCount={handleChangeOccurrenceCount}
+              />
+            }
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             refreshControl={
               <RefreshControl refreshing={isRefreshing} onRefresh={() => refresh()} tintColor="#818cf8" />
             }

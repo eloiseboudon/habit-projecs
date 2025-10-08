@@ -457,6 +457,7 @@ export default function PersonalisationScreen() {
             principale.
           </Text>
           <FlatList<TaskListItem>
+            style={styles.list}
             data={personalQuests}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
@@ -689,6 +690,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 160,
     gap: 12,
+  },
+  list: {
+    flex: 1,
   },
   listHeader: {
     marginBottom: 12,

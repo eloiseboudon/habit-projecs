@@ -166,6 +166,7 @@ export default function Index() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
         <ScrollView
+          style={styles.scroll}
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -207,6 +208,10 @@ const styles = StyleSheet.create({
     paddingTop: 32,
     paddingBottom: 120,
     gap: 32,
+    flexGrow: 1,
+  },
+  scroll: {
+    flex: 1,
   },
   topBar: {
     flexDirection: "row",

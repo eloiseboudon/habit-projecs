@@ -728,6 +728,7 @@ export default function QuestsScreen() {
         <View style={styles.screen}>
           {showAddTask ? (
             <ScrollView
+              style={styles.addOnlyScroll}
               contentContainerStyle={styles.addOnlyContent}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
@@ -737,6 +738,7 @@ export default function QuestsScreen() {
             </ScrollView>
           ) : (
             <FlatList<TaskListItem>
+              style={styles.list}
               data={displayedQuestItems}
               keyExtractor={(item) => item.id}
               renderItem={renderItem}
@@ -782,12 +784,18 @@ const styles = StyleSheet.create({
     gap: 16,
     flexGrow: 1,
   },
+  list: {
+    flex: 1,
+  },
   addOnlyContent: {
     paddingHorizontal: 24,
     paddingTop: 32,
     paddingBottom: 160,
     gap: 16,
     flexGrow: 1,
+  },
+  addOnlyScroll: {
+    flex: 1,
   },
   headerContainer: {
     marginBottom: 16,

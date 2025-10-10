@@ -102,6 +102,7 @@ export default function ProgressionScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.screen}>
           <FlatList
+            style={styles.list}
             data={[]}
             keyExtractor={(_, index) => index.toString()}
             renderItem={() => null}
@@ -220,6 +221,10 @@ const styles = StyleSheet.create({
     paddingBottom: 140,
     paddingTop: 28,
     gap: 24,
+    flexGrow: 1,
+  },
+  list: {
+    flex: 1,
   },
   headerRow: {
     flexDirection: "row",

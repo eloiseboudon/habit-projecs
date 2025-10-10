@@ -275,6 +275,7 @@ export default function TaskCatalogueScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.screen}>
           <FlatList
+            style={styles.list}
             data={catalogueItems}
             keyExtractor={(item) =>
               item.type === "domain" ? `domain-${item.domainId}` : `template-${item.template.id}`
@@ -356,6 +357,10 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 120,
+    flexGrow: 1,
+  },
+  list: {
+    flex: 1,
   },
   domainHeader: {
     backgroundColor: "rgba(30, 41, 59, 0.6)",

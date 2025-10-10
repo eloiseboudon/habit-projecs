@@ -419,7 +419,11 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
-        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.topBar}>
             <TouchableOpacity
               style={styles.backButton}
@@ -459,6 +463,10 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 120,
     gap: 24,
+    flexGrow: 1,
+  },
+  scroll: {
+    flex: 1,
   },
   topBar: {
     flexDirection: "row",

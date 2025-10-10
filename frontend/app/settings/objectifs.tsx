@@ -259,6 +259,7 @@ export default function ObjectivesScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
         <ScrollView
+          style={styles.scroll}
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -308,6 +309,10 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 120,
     gap: 24,
+    flexGrow: 1,
+  },
+  scroll: {
+    flex: 1,
   },
   topBar: {
     flexDirection: "row",
